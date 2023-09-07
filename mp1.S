@@ -71,6 +71,32 @@ mp1_poke:
 
 .globl mp1_rtc_tasklet
 mp1_rtc_tasklet:
+
+	pushl	%eax
+	pushl	%ecx
+	pushl	%edx
+
+	pushl	%ebx
+	pushl	%esi
+	pushl	%edi
+
+	mp1_process_missiles:
+	call	update_missiles
+
+	mp1_redraw_cities:
+
+
+	mp1_redraw_xhairs:
+
+
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+
+	popl	%edx
+	popl	%ecx
+	popl	%eax
+
 		ret
 
 # int mp1_ioctl(unsigned long arg, unsigned int cmd)
@@ -90,6 +116,9 @@ mp1_ioctl:
 # ----------------- Functions private to this file -------------------
 
 update_missiles:
+
+	
+
 		ret
 
 mp1_ioctl_startgame:
