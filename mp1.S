@@ -116,6 +116,13 @@ mp1_rtc_tasklet:
 # Outputs  : Returns an integer - depends on which ioctl() function is called
 # Registers: Standard C calling convention
 
+ioctl_jumptable:
+	.long	mp1_ioctl_startgame
+	.long	mp1_ioctl_addmissile
+	.long	mp1_ioctl_movexhairs
+	.long	mp1_ioctl_getstatus
+	.long	mp1_ioctl_endgame
+
 .globl mp1_ioctl
 mp1_ioctl:
 	pushl	%ebp
@@ -125,29 +132,22 @@ mp1_ioctl:
 	pushl	%edi
 
 	movl	12(%ebp), %ecx		# read cmd
-	cmpl	0x00, %ecx		    # start game
-	je 		mp1_ioctl_startgame
-	cmpl	0x01, %ecx		    # add missile
-	je 		mp1_ioctl_addmissile
-	cmpl	0x02, %ecx		    # move crosshairs
-	je 		mp1_ioctl_movexhairs
-	cmpl	0x03, %ecx		    # get status
-	je 		mp1_ioctl_getstatus
-	cmpl	0x04, %ecx		    # end game
-	je 		mp1_ioctl_endgame
-	
-	jmp		invalid_cmd
+	cmpl	$0x00000000, %ecx	# if cmd < 0
+	jb		invalid_cmd
+	cmpl	$0x00000004, %ecx	# if cmd > 4
+	ja		invalid_cmd
 
-
+	lea		ioctl_jumptable, %edx
+	movl	(%ebx, %edx, 4), %eax
+	jmp		*%eax
 	
+	invalid_cmd:
+	movl	$-1, %eax		# return -1
 	popl	%edi
 	popl	%esi
 	popl	%ebx
-
 		leave
 		ret
-	
-	invalid_cmd:
 
 
 # ----------------- Functions private to this file -------------------
@@ -270,17 +270,42 @@ mp1_missile_remove:
 
 
 mp1_ioctl_startgame:
+	movl 	$0, mp1_score		# set score to 0
+	movl	$0, base_alive		# set all bases to alive
+	movl	$0, (mp1_missile_list)	# set the missile list to null
 
 	movl	$40, (crosshairs_x)	# set the crosshairs to middle (40,12)
 	movl	$12, (crosshairs_y)
 
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+
+		leave
 		ret
 
 mp1_ioctl_addmissile:
 
-
-
+	pushl	$36
+	call	mp1_malloc
+	addl	$4, %esp	
+	cmpl	$0, %eax
+	je		fail_malloc
 	
+
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+
+		leave
+		ret
+
+fail_malloc:
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+
+		leave
 		ret
 
 mp1_ioctl_movexhairs:
@@ -298,6 +323,10 @@ mp1_ioctl_movexhairs:
 	jb		test_x
 	movl	%eax, crosshairs_y	# if new_y in bounds, set y
 
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+	
 
 	test_x:
 	and 	$0x0000ffff, %edx	# get x
@@ -313,11 +342,27 @@ mp1_ioctl_movexhairs:
 	and 	$0x00, %eax			# always return 0
 	popl	%edx
 	
+
+	popl	%edi
+	popl	%esi
+	popl	%ebx
 		leave
 		ret
 
 mp1_ioctl_getstatus:
+
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+
+		leave
 		ret
 
 mp1_ioctl_endgame:
+
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+
+		leave
 		ret
