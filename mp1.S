@@ -72,8 +72,8 @@ mp1_poke:
 .globl mp1_rtc_tasklet
 mp1_rtc_tasklet:
 		pushl	%ebp
-		movl	%esp, %ebp
-		pushl	%eax
+		movl	%esp, %ebp					
+		pushl	%eax							# [callee-saved]
 		pushl	%ecx
 		pushl	%edx
 
@@ -127,7 +127,7 @@ ioctl_jumptable:
 mp1_ioctl:
 		pushl	%ebp
 		movl	%esp, %ebp
-		pushl	%ebx
+		pushl	%ebx				# [callee-saved]
 		pushl	%esi
 		pushl	%edi
 
@@ -142,8 +142,9 @@ mp1_ioctl:
 		jmp		*%eax
 	
 	invalid_cmd:
-		movl	$-1, %eax		# return -1
-		popl	%edi
+		movl	$-1, %eax			# return -1
+
+		popl	%edi				# [callee-saved]
 		popl	%esi
 		popl	%ebx
 			leave
@@ -155,7 +156,7 @@ mp1_ioctl:
 update_missiles:
 		pushl	%ebp
 		movl	%esp, %ebp
-		pushl	%ebx		# store the regs
+		pushl	%ebx					# [callee-saved]
 		pushl	%esi
 		pushl	%edi
 
@@ -167,30 +168,30 @@ update_missiles:
 		
 
 		cmpl	0x00, EXPLODED(%ebx)	
-		ja		is_exploded			# if exploded parameter is positive
+		ja		is_exploded				# if exploded parameter is positive
 
 	not_exploded:
-		add 	VX(%ebx), X(%ebx)	# update x
-		add		VY(%ebx), Y(%ebx)	# update y
+		add 	VX(%ebx), X(%ebx)		# update x
+		add		VY(%ebx), Y(%ebx)		# update y
 
 	check_bound:
-		cmpl	0x004f0000, X(%ebx)	# if x > 79
+		cmpl	0x004f0000, X(%ebx)		# if x > 79
 		ja		out_of_bounds
-		cmpl	0x00180000, Y(%ebx)	# if y > 24
+		cmpl	0x00180000, Y(%ebx)		# if y > 24
 		ja		out_of_bounds
-		cmpl	0x00000000, X(%ebx)	# if x < 0
+		cmpl	0x00000000, X(%ebx)		# if x < 0
 		jb		out_of_bounds
-		cmpl	0x00000000, Y(%ebx)	# if y < 0
+		cmpl	0x00000000, Y(%ebx)		# if y < 0
 		jb		out_of_bounds
 
 	in_bound:
-		movl 	DEST_X(%ebx), %esi	# read the destination x
-		shrl	$16, %esi			# shift right 16 bits, to compare with x
+		movl 	DEST_X(%ebx), %esi		# read the destination x
+		shrl	$16, %esi				# shift right 16 bits, to compare with x
 		cmpl	%esi, X(%ebx)
 		je	 	is_exploded
 
-		movl	DEST_Y(%ebx), %edi	# read the destination y
-		shrl	$16, %edi			# shift right 16 bits, to compare with y
+		movl	DEST_Y(%ebx), %edi		# read the destination y
+		shrl	$16, %edi				# shift right 16 bits, to compare with y
 		cmpl	%edi, Y(%ebx)
 		je		is_exploded
 
@@ -210,11 +211,11 @@ update_missiles:
 	
 
 	next_missile:
-		movl	%ebx, %esi			# prev = this
-		movl	NEXT(%ebx), %ebx	# this = next
+		movl	%ebx, %esi				# prev = this
+		movl	NEXT(%ebx), %ebx		# this = next
 		jmp		update_loop
 
-		popl	%edi
+		popl	%edi					# [callee-saved]
 		popl	%esi
 		popl	%ebx
 
@@ -238,6 +239,93 @@ update_missiles:
 		jmp 	end_notify
 
 
+
+
+
+draw_base:
+		pushl	%ebp
+		movl	%esp, %ebp
+		pushl	%ebx					# [callee-saved]
+		pushl	%esi
+		pushl	%edi
+
+		movl	8(%ebp), %ebx			# read base location
+
+
+draw_crosshairs:
+		pushl	%ebp
+		movl	%esp, %ebp
+		pushl	%eax
+		pushl	%ebx					# [callee-saved]
+		pushl	%esi
+		pushl	%edi
+
+		movl	8(%ebp), %eax			# read x
+		movl	12(%ebp), %ebx			# read y
+		movl	16(%ebp), %esi			# read char
+		movl	20(%ebp), %edi			# set color to black
+
+		cmpl	$0, %edi
+		je		no_shift
+
+		shrl	$16, %eax				# get x
+		shrl	$16, %ebx				# get y
+
+	no_shift:
+		iumll	$80, %ebx
+		addl	%eax, %ebx				# 80 * y + x
+		iumll	$2, %ebx				#
+		
+		call	mp1_poke
+		
+		popl	%edi					# [callee-saved]
+		popl	%esi
+		popl	%ebx
+		popl	%eax
+
+			leave
+			ret
+
+draw_background:
+        pushl   %ebp
+		movl    %esp, %ebp
+		pushl   %ebx					# [callee-saved]
+		pushl   %esi
+		pushl   %edi
+
+		movl	base_alive, %ebx	
+		mobl	%ebx, %esi				# save base_alive
+		movl	$0x00ff0000, %edi		# get base 3 status
+		pushl	$18
+		call	draw_base
+		addl	$4, %esp
+
+		movl	%esi, %ebx				# restore base_alive
+		movl	$0x0000ff00, %edi		# get base 2 status
+		pushl	$38
+		call	draw_base
+		addl	$4, %esp
+
+		movl	%esi, %ebx				# restore base_alive
+		movl	$0x000000ff, %edi		# get base 1 status
+		pushl	$58
+		call	draw_base
+		addl	$4, %esp
+
+		pushl	$0
+		pushl	$'+'
+		pushl	crosshairs_x
+		pushl	crosshairs_y
+		call	draw_crosshairs
+		addl	$16, %esp
+
+		popl	%edi					# [callee-saved]
+		popl	%esi
+		popl	%ebx
+
+			leave
+			ret
+
 mp1_missile_remove:
 		pushl	%ebp
 		movl	%esp, %ebp
@@ -260,7 +348,7 @@ mp1_missile_remove:
 		movl	%edi, mp1_missile_list
 
 	end_remove:
-		popl	%edi
+		popl	%edi				# [callee-saved]
 		popl	%esi
 		popl	%ebx
 
@@ -269,14 +357,13 @@ mp1_missile_remove:
 
 
 mp1_ioctl_startgame:
-		movl 	$0, mp1_score		# set score to 0
-		movl	$0, base_alive		# set all bases to alive
-		movl	$0, (mp1_missile_list)	# set the missile list to null
-
-		movl	$40, (crosshairs_x)	# set the crosshairs to middle (40,12)
+		movl 	$0, mp1_score			# init score
+		movl	$0, (mp1_missile_list)	# init empty missile list
+		movl	$0x00ffffff, base_alive	# init alive bases
+		movl	$40, (crosshairs_x)		# init crosshairs to middle (40,12)
 		movl	$12, (crosshairs_y)
 
-		popl	%edi
+		popl	%edi					# [callee-saved]
 		popl	%esi
 		popl	%ebx
 
@@ -284,13 +371,31 @@ mp1_ioctl_startgame:
 			ret
 
 mp1_ioctl_addmissile:
+		pushl	%ecx				# [caller-saved]
+		pushl	%edx
 		pushl	$36
 		call	mp1_malloc
 		addl	$4, %esp	
+		popl	%edx
+		popl	%ecx
+
 		cmpl	$0, %eax
 		je		fail_malloc
-		
 
+		movl	8(%ebp), %edx			# "from"
+		pushl	$36
+		pushl	%edx
+		pushl	%eax
+		call	mp1_copy_from_user		# copy_from_user (to, from, 36)
+		addl	$12, %esp
+		cmpl	$0, %eax
+		jne		fail_copy
+
+		movl	mp1_missile_list, %edx
+		movl	%edx, NEXT(%eax)		# new -> next = head
+		movl	%eax, mp1_missile_list	# head = new
+
+		movl	$0, %eax				# return 0
 		popl	%edi
 		popl	%esi
 		popl	%ebx
@@ -298,13 +403,21 @@ mp1_ioctl_addmissile:
 			leave
 			ret
 
-fail_malloc:
+	fail_copy:
+		pushl	%eax
+		call	mp1_free
+		addl	$4, %esp
+
+	fail_malloc:
+		movl	$-1, %eax			# return -1
 		popl	%edi
 		popl	%esi
 		popl	%ebx
 
 			leave
 			ret
+
+
 
 mp1_ioctl_movexhairs:
 		pushl	%edx
