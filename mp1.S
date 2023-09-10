@@ -80,6 +80,7 @@ mp1_rtc_tasklet:
 		pushl	%ebx
 		pushl	%esi
 		pushl	%edi
+		pushfl
 
 	.mp1_process_missiles:
 		pushl	mp1_missile_list
@@ -93,7 +94,7 @@ mp1_rtc_tasklet:
 	.mp1_redraw_base_and_crosshairs:
 		call	draw_background
 
-
+		popfl
 		popl	%edi
 		popl	%esi
 		popl	%ebx
@@ -397,7 +398,7 @@ draw_background:
 
 		movl	base_alive, %ebx	
 		movl	%ebx, %esi				# save base_alive
-		movl	$0x00ff0000, %edi		# get base 3 status
+		andl	$0x00ff0000, %edi		# get base 3 status
 		pushl	%edi
 		pushl	$58
 		call	draw_base
@@ -408,14 +409,14 @@ draw_background:
 		pushl	%edi
 		pushl	$38
 		call	draw_base
-		addl	$4, %esp
+		addl	$8, %esp
 
 		movl	%esi, %ebx				# restore base_alive
 		movl	$0x000000ff, %edi		# get base 1 status
 		pushl	%edi
 		pushl	$18
 		call	draw_base
-		addl	$4, %esp
+		addl	$8, %esp
 
 		
 		movl	crosshairs_x, %ebx
@@ -499,18 +500,21 @@ mp1_ioctl_addmissile:
 		cmpl	$0, %eax
 		je		.fail_malloc
 
+
+		movl	%eax, %ecx
 		movl	8(%ebp), %edx			# "from"
 		pushl	$36
 		pushl	%edx
-		pushl	%eax
+		pushl	%ecx
 		call	mp1_copy_from_user		# copy_from_user (to, from, 36)
-		addl	$12, %esp
+		popl	%ecx
+		addl	$8, %esp
 		cmpl	$0, %eax
 		jne		.fail_copy
 
 		movl	mp1_missile_list, %edx
-		movl	%edx, NEXT(%eax)		# new -> next = head
-		movl	%eax, mp1_missile_list	# head = new
+		movl	%edx, NEXT(%ecx)		# new -> next = head
+		movl	%ecx, mp1_missile_list	# head = new
 
 		movl	$0, %eax				# return 0
 
@@ -523,7 +527,7 @@ mp1_ioctl_addmissile:
 			ret
 
 	.fail_copy:
-		pushl	%eax
+		pushl	%ecx
 		call	mp1_free
 		addl	$4, %esp
 
