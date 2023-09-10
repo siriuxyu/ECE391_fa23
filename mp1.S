@@ -377,9 +377,11 @@ draw_char:
 		imull	$2, %ebx
 
 		movl	%ebx, %eax				# set input
+		pushl	%ecx
 		pushl	%edx					# save %edx
 		call	mp1_poke
 		popl	%edx
+		popl	%ecx
 		
 		popl	%edi					# [callee-saved]
 		popl	%esi
@@ -556,7 +558,7 @@ mp1_ioctl_movexhairs:
 		movl	8(%ebp), %edx		# read arg
 		movl	%edx, %eax			# copy arg
 
-		shrl	$16, %eax			# get y
+		sarl	$16, %eax			# get y
 		addl	crosshairs_y, %eax
 		cmpl	$24, %eax			# if y > 24
 		jl	    .test_x
@@ -576,6 +578,12 @@ mp1_ioctl_movexhairs:
 		movl	%eax, crosshairs_y
 
 	.end_movexhairs:
+		pushl	$'+'				# draw new crosshairs
+		pushl	crosshairs_y
+		pushl	crosshairs_x
+		call	draw_char
+		addl	$12, %esp
+
 		and 	$0x00, %eax			# always return 0
 		popl	%edx
 		
