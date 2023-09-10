@@ -90,10 +90,8 @@ mp1_rtc_tasklet:
 	.empty_list:
 
 
-	.mp1_redraw_cities:
-
-
-	.mp1_redraw_xhairs:
+	.mp1_redraw_base_and_crosshairs:
+		call	draw_background
 
 
 		popl	%edi
@@ -130,12 +128,13 @@ mp1_ioctl:
 		pushl	%ebx				# [callee-saved]
 		pushl	%esi
 		pushl	%edi
+		pushl	%ecx
 
 		movl	12(%ebp), %ecx		# read cmd
-		cmpl	$0x00000000, %ecx	# if cmd < 0
-		jb		.invalid_cmd
-		cmpl	$0x00000004, %ecx	# if cmd > 4
-		ja		.invalid_cmd
+		cmpl	$0, %ecx			# if cmd < 0
+		jl		.invalid_cmd
+		cmpl	$4, %ecx			# if cmd > 4
+		jg		.invalid_cmd
 
 		lea		ioctl_jumptable, %edx
 		movl	(%edx, %ecx, 4), %eax
@@ -144,7 +143,8 @@ mp1_ioctl:
 	.invalid_cmd:
 		movl	$-1, %eax			# return -1
 
-		popl	%edi				# [callee-saved]
+		popl	%ecx				# [callee-saved]
+		popl	%edi
 		popl	%esi
 		popl	%ebx
 			leave
@@ -168,7 +168,7 @@ update_missiles:
 		je 		.end_loop
 		movl	8(%ebp), %ecx			# read prev (head -> prev = head)
 
-		pushl	$0						# wipe out old from screen
+		pushl	$' '						# wipe out old from screen
 		pushl	Y(%ebx)
 		pushl	X(%ebx)
 		call	draw_char
@@ -196,34 +196,39 @@ update_missiles:
 
 	.in_bound:
 		movl 	X(%ebx), %esi			# x
-		# shrl	$16, %esi				# shift right 16 bits, to compare with x
-		cmpl	%esi, DEST_X(%ebx)
+		movl	%esi, %ecx				# %ecx = x_shift
+		shrl	$16, %ecx				# shift right 16 bits, to compare with x
+		cmpl	%ecx, DEST_X(%ebx)
 		jne	 	.not_exploded
 
 		movl	Y(%ebx), %edi			# y
-		# shrl	$16, %edi				# shift right 16 bits, to compare with y
-		cmpl	%edi, DEST_Y(%ebx)
+		movl	%edi, %edx				# %edx = y_shift
+		shrl	$16, %edx				# shift right 16 bits, to compare with y
+		cmpl	%edx, DEST_Y(%ebx)
 		je		.is_exploded
 		# jmp		not_exploded
 
 	.not_exploded:
-		movl	Y(%ebx), %edi			# y
-		shrl	$16, %edi				# shift y
-		movl	X(%ebx), %esi			# x
-		shrl	$16, %esi				# shift x
+		# movl	Y(%ebx), %edi			# y
+		# shrl	$16, %edi				# shift y
+		# movl	X(%ebx), %esi			# x
+		# shrl	$16, %esi				# shift x
 
 		pushl	C(%ebx)					# draw new missile	
-		pushl	%edi
-		pushl	%esi
+		pushl	%edx
+		pushl	%ecx
 		call	draw_char
 		addl	$12, %esp
 
 		jmp		.next_missile
 
 	.is_exploded:
-		pushl	EXPLOSION
-		pushl	Y(%ebx)
-		pushl	X(%ebx)
+		pushl	EXPLOSION				# draw explosion
+		pushl	%edx
+		pushl	%ecx
+		call	draw_char
+		addl	$12, %esp
+
 		pushl	%ebx
 		# pushl	%edx
 		call	missile_explode
@@ -247,7 +252,7 @@ update_missiles:
 		movl	X(%ebx), %esi			# x
 		shrl	$16, %esi				# shift x
 
-		pushl	EXPLOSION(%ebx)			# char
+		pushl	EXPLOSION				# char
 		pushl	%edi
 		pushl	%esi
 		call	draw_char
@@ -285,7 +290,7 @@ update_missiles:
 
 
 	.finish_explode:
-		pushl	$0					# wipe out old from screen
+		pushl	$' '					# wipe out old from screen
 		pushl	Y(%ebx)
 		pushl	X(%ebx)
 		call	draw_char
@@ -334,7 +339,7 @@ draw_base:
 		pushl	(%edi)
 		pushl	$24
 		pushl	%ebx
-		call	draw_char
+		call	draw_char				# draw_char(x, y, char)
 		addl	$12, %esp
 
 		decl	%ecx
@@ -508,6 +513,8 @@ mp1_ioctl_addmissile:
 		movl	%eax, mp1_missile_list	# head = new
 
 		movl	$0, %eax				# return 0
+
+		popl	%ecx
 		popl	%edi
 		popl	%esi
 		popl	%ebx
@@ -522,6 +529,8 @@ mp1_ioctl_addmissile:
 
 	.fail_malloc:
 		movl	$-1, %eax			# return -1
+
+		popl	%ecx				# [callee-saved]
 		popl	%edi
 		popl	%esi
 		popl	%ebx
@@ -534,6 +543,11 @@ mp1_ioctl_addmissile:
 mp1_ioctl_movexhairs:
 		pushl	%edx
 
+		pushl	$' '				# wipe out old from screen
+		pushl	crosshairs_y
+		pushl	crosshairs_x
+		call	draw_char
+		addl	$12, %esp
 
 		movl	8(%ebp), %edx		# read arg
 		movl	%edx, %eax			# copy arg
@@ -561,6 +575,7 @@ mp1_ioctl_movexhairs:
 		and 	$0x00, %eax			# always return 0
 		popl	%edx
 		
+		popl	%ecx
 		popl	%edi
 		popl	%esi
 		popl	%ebx
@@ -569,7 +584,7 @@ mp1_ioctl_movexhairs:
 
 mp1_ioctl_getstatus:
 		movl	mp1_score, %esi
-		andl	$0x0000ffff, %esi	
+		andl	$0x0000ffff, %esi		# %esi[3,0] = score
 
 		movl	base_alive, %edi
 		movl	%edi, %eax
@@ -609,7 +624,8 @@ mp1_ioctl_getstatus:
 		cmpl	$0x00000000, %eax	# if copy_to_user failed
 		jne		.fail_copy
 
-		popl	%edi				# [callee-saved]
+		popl	%ecx				# [callee-saved]
+		popl	%edi
 		popl 	%esi
 		popl	%ebx
 
@@ -620,7 +636,8 @@ mp1_ioctl_getstatus:
 		movl	$-1, %eax			# return -1
 		movl	%ecx, mp1_score		# reset score
 
-		popl	%edi				# [callee-saved]
+		popl	%ecx				# [callee-saved]
+		popl	%edi
 		popl	%esi
 		popl	%ebx
 
@@ -648,7 +665,8 @@ mp1_ioctl_endgame:
 
 
 	.loop_done:	
-		popl	%edi					# [callee-saved]
+		popl	%ecx				# [callee-saved]
+		popl	%edi
 		popl	%esi
 		popl	%ebx
 
