@@ -332,12 +332,14 @@ draw_base:
 
 	.draw_loop:
 		pushl	(%edi)
-		pushl	%ebx
 		pushl	$24
+		pushl	%ebx
 		call	draw_char
 		addl	$12, %esp
 
 		decl	%ecx
+		incl 	%ebx
+		incl	%edi
 		jne		.draw_loop
 
 		movl	%ebx, %esi				# save base location
