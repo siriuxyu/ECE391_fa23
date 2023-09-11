@@ -83,7 +83,7 @@ mp1_rtc_tasklet:
 		pushfl
 
 	.mp1_process_missiles:
-		pushl	mp1_missile_list
+		
 		cmpl	$0x00, mp1_missile_list
 		jne		.empty_list
 		call	update_missiles
@@ -624,18 +624,21 @@ mp1_ioctl_getstatus:
 		movl	mp1_score, %ecx		# store score
 		movl	%esi, (%ebx)		# store status
 		movl	8(%ebp), %edx		# read "to"
-		pushl	%eax
+
+		push	%ecx				# caller-saved
 		pushl	$4
 		pushl	%ebx				# from
 		pushl	%edx				# to
 		call	mp1_copy_to_user
 		addl	$12, %esp
-		popl	%edx
-		popl	%ebx
-		popl	%esi
+		popl	%ecx				# caller-restore
+
+		movl	%ecx, mp1_score		# restore score
 		cmpl	$0x00000000, %eax	# if copy_to_user failed
 		jne		.fail_copy
 
+
+		movl	$0, %eax			# return 0
 		popl	%ecx				# [callee-saved]
 		popl	%edi
 		popl 	%esi
@@ -658,17 +661,17 @@ mp1_ioctl_getstatus:
 
 mp1_ioctl_endgame:
 		movl	mp1_missile_list, %esi	
+	
+	.loop:
 		cmpl	$0x00000000, %esi
 		je		.loop_done
-
-	.loop:
 		movl	NEXT(%esi), %edi
 		pushl	%eax
 		pushl	%ecx
 		pushl	%edx
 		pushl	%esi
 		call	mp1_free
-		addl	$4, %esp
+		popl	%esi
 		popl	%edx
 		popl	%ecx
 		popl	%eax
