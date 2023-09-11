@@ -83,10 +83,11 @@ mp1_rtc_tasklet:
 		pushfl
 
 	.mp1_process_missiles:
-		
+		pushl	mp1_missile_list
 		cmpl	$0x00, mp1_missile_list
 		jne		.empty_list
 		call	update_missiles
+		popl	mp1_missile_list
 
 	.empty_list:
 
@@ -163,12 +164,12 @@ update_missiles:
 		pushl	%edi
 		pushl	%edx					# next
 
-	.update_loop:
 		movl	8(%ebp), %ebx			# read the missile pointer from stack
-		cmpl	0x00, %ebx				# if null, end loop
-		je 		.end_loop
 		movl	8(%ebp), %ecx			# read prev (head -> prev = head)
 
+	.update_loop:
+		cmpl	0x00, %ebx				# if null, end loop
+		je 		.end_loop
 		pushl	$' '						# wipe out old from screen
 		pushl	Y(%ebx)
 		pushl	X(%ebx)
@@ -264,15 +265,15 @@ update_missiles:
 		movl	NEXT(%ebx), %ebx		# this = next
 		jmp		.update_loop
 
+
+	.end_loop:
 		popl	%edx
 		popl	%edi					# [callee-saved]
 		popl	%esi
 		popl	%ebx
 
-
-	.end_loop:
-	    leave
-		ret
+	    	leave
+			ret
 
 
 	.out_of_bounds:
