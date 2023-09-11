@@ -368,6 +368,7 @@ draw_char:
 		pushl	%ebx					# [callee-saved]
 		pushl	%esi
 		pushl	%edi
+		pushl	%ecx
 
 		movl	8(%ebp), %eax			# read x
 		movl	12(%ebp), %ebx			# read y
@@ -378,12 +379,13 @@ draw_char:
 		imull	$2, %ebx
 
 		movl	%ebx, %eax				# set input
-		pushl	%ecx
+		# pushl	%ecx
 		pushl	%edx					# save %edx
 		call	mp1_poke
 		popl	%edx
-		popl	%ecx
+		# popl	%ecx
 		
+		popl	%ecx
 		popl	%edi					# [callee-saved]
 		popl	%esi
 		popl	%ebx
