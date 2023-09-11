@@ -125,14 +125,14 @@ ioctl_jumptable:
 
 .globl mp1_ioctl
 mp1_ioctl:
-		pushl	%ebp
-		movl	%esp, %ebp
-		pushl	%ebx				# [callee-saved]
-		pushl	%esi
-		pushl	%edi
-		pushl	%ecx
+		# pushl	%ebp
+		# movl	%esp, %ebp
+		# pushl	%ebx				# [callee-saved]
+		# pushl	%esi
+		# pushl	%edi
+		# pushl	%ecx
 
-		movl	12(%ebp), %ecx		# read cmd
+		movl	8(%esp), %ecx		# read cmd [arg]
 		cmpl	$0, %ecx			# if cmd < 0
 		jl		.invalid_cmd
 		cmpl	$4, %ecx			# if cmd > 4
@@ -145,11 +145,11 @@ mp1_ioctl:
 	.invalid_cmd:
 		movl	$-1, %eax			# return -1
 
-		popl	%ecx				# [callee-saved]
-		popl	%edi
-		popl	%esi
-		popl	%ebx
-			leave
+		# popl	%ecx				# [callee-saved]
+		# popl	%edi
+		# popl	%esi
+		# popl	%ebx
+			# leave
 			ret
 
 
@@ -508,6 +508,13 @@ mp1_missile_remove:
 
 
 mp1_ioctl_startgame:
+		pushl	%ebp
+		movl	%esp, %ebp
+		pushl	%ebx				# [callee-saved]
+		pushl	%esi
+		pushl	%edi
+
+
 		movl 	$0, mp1_score			# init score
 		movl	$0, mp1_missile_list	# init empty missile list
 		movl	$0x00ffffff, base_alive	# init alive bases
@@ -522,6 +529,13 @@ mp1_ioctl_startgame:
 			ret
 
 mp1_ioctl_addmissile:
+		pushl	%ebp
+		movl	%esp, %ebp
+		pushl	%ebx				# [callee-saved]
+		pushl	%esi
+		pushl	%edi
+		pushl 	%ecx			
+
 		pushl	%ecx				# [caller-saved]
 		pushl	%edx
 		pushl	$36
@@ -578,6 +592,14 @@ mp1_ioctl_addmissile:
 
 
 mp1_ioctl_movexhairs:
+		pushl	%ebp
+		movl	%esp, %ebp
+		pushl	%ebx				# [callee-saved]
+		pushl	%esi
+		pushl	%edi
+		pushl 	%ecx
+
+
 		pushl	%edx
 
 		pushl	$' '				# wipe out old from screen
@@ -623,10 +645,17 @@ mp1_ioctl_movexhairs:
 		popl	%edi
 		popl	%esi
 		popl	%ebx
-			leave
+			# leave
 			ret
 
 mp1_ioctl_getstatus:
+		pushl	%ebp
+		movl	%esp, %ebp
+		pushl	%ebx				# [callee-saved]
+		pushl	%esi
+		pushl	%edi
+		pushl 	%ecx
+
 		movl	mp1_score, %esi
 		andl	$0x0000ffff, %esi		# %esi[3,0] = score
 
@@ -692,6 +721,13 @@ mp1_ioctl_getstatus:
 			ret
 
 mp1_ioctl_endgame:
+		pushl	%ebp
+		movl	%esp, %ebp
+		pushl	%ebx				# [callee-saved]
+		pushl	%esi
+		pushl	%edi
+		pushl 	%ecx
+		
 		movl	mp1_missile_list, %esi	
 	
 	.loop:
