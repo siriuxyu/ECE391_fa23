@@ -562,3 +562,31 @@ unsigned char font_data[256][16] = {
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 };
 
+unsigned char new_buf[320*18];
+
+/*
+ * text_to_graphics
+ *   DESCRIPTION: converts a string of text to a buffer of graphics
+ *   INPUTS: string of text
+ *   OUTPUTS: none
+ *   RETURN VALUE: pointer to 
+ *   SIDE EFFECTS: changes the first 32 palette colors
+ */ 
+char* text_to_graphics (const char* str){
+    int len = strlen(str);
+    for (int i=0; i<len; i++) {
+
+        for (int y=0; y<16; y++) {
+            for (int x=0; x<8; x++) {
+                if (pattern[y] & (0x80 >> x)) {
+                    new_buf[i*(y*8 + x)] = 0xFF;
+                } else {
+                    new_buf[i*(y*8 + j)] = 0x00;
+                }
+            }
+        }
+        
+    }
+    
+    return new_buf;
+}

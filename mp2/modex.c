@@ -597,7 +597,7 @@ draw_vert_line (int x)
     addr = img3 + (x >> 2) + show_y * SCROLL_X_WIDTH;
 
     /* Calculate plane offset of first pixel. */
-    p_off = (3 - (x & 3));
+    p_off = (3 - (x & 3));      // same as (3 - (x % 4))
 
     /* Copy image data into appropriate planes in build buffer. */
     for (i = 0; i < SCROLL_Y_DIM; i++) {
