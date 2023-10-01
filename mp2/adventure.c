@@ -249,6 +249,27 @@ game_loop ()
 
 	show_screen ();
 
+	(void)pthread_mutex_lock (&msg_lock);
+	if ('\0' == status_msg[0]) {
+		(void)pthread_mutex_unlock (&msg_lock);
+		unsigned char* name = game_info.where.name;
+		unsigned char* typed_command = get_typed_command ();
+		int room_length = strlen(name);
+		int type_lenth = strlen(typed_command);
+		int space_lenth = 40 - room_length - type_lenth - 4;		// 40: length of the status bar; determine spaces
+		unsigned char* new_bar;
+		strncpy(new_bar, name, room_length);
+		for (int j = 0; j < space_lenth; j++) {
+			new_bar[room_length + j] = ' ';
+		}
+		strncpy(new_bar + room_length + space_lenth, typed_command, type_lenth);
+		
+		show_bar ();
+	}
+	else {
+	    show_bar (status_msg);
+	}
+
 	/*
 	 * Wait for tick.  The tick defines the basic timing of our
 	 * event loop, and is the minimum amount of time between events.
