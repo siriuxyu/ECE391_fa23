@@ -530,6 +530,7 @@ show_screen ()
     OUTW (0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
 }
 
+
 /*
  * show_bar
  *   DESCRIPTION: Show the bar on screen
@@ -543,7 +544,8 @@ void
 show_bar (const char* str)
 {
     unsigned char* bar_buffer = text_to_graphics(str);
-    for (int i=0; i<4; i++) {
+    int i;
+    for (i=0; i<4; i++) {
         SET_WRITE_MASK(0x100 << i);
         copy_bar(bar_buffer + i*1440, 0x00);    // 1440 is 1920*18/4
     }
@@ -1046,7 +1048,6 @@ copy_image (unsigned char* img, unsigned short scr_addr)
     );
 }
 
-
 // @@ Checkpoint 1
 /*
  * copy_bar
@@ -1074,28 +1075,6 @@ copy_bar (unsigned char* bar_graph, unsigned short scr_addr)
       : "S" (bar_graph), "D" (mem_image + scr_addr) 
       : "eax", "ecx", "memory"
     );
-}
-
-
-/*
- * bar_to_buffer
- *   DESCRIPTION: Copy the status bar from the my_buffer to build buffer
- *   INPUTS: my_buf -- pointer to graphical status bar buffer
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: copies a plane from the build buffer to video memory
-*/
-void bar_to_buffer(char* my_buf) {
-    int start_x = 0;
-    int start_y = 182;
-    for (int x=0; x<320; x++) {
-        int p_off = 3 - ((show_x + x) & 3);
-        for (int y=0; y<18; y++) {
-            int addr = img3 + (show_x >> 2) + show_y * SCROLL_X_WIDTH;
-            int buf_off = (x >> 2) + y * SCROLL_X_WIDTH + p_off * SCROLL_SIZE;
-            addr[buf_off] = my_buf[y+start_y][x];
-        }
-    }
 }
 
 

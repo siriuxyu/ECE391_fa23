@@ -47,6 +47,8 @@
  * Each character is 8x16 pixels and occupies two lines in the table below.
  * Each byte represents a single bitmapped line of a single character.
  */
+
+
 unsigned char font_data[256][16] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
@@ -562,7 +564,6 @@ unsigned char font_data[256][16] = {
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 };
 
-
 unsigned char new_buf[18*320];     // new_buf[Y*X]
 /*
  * text_to_graphics
@@ -574,13 +575,17 @@ unsigned char new_buf[18*320];     // new_buf[Y*X]
  */ 
 unsigned char* text_to_graphics (const char* str){
     int len = strlen(str);
-    for (int i=0; i<len; i++) {
-        for (int x=0; x<320; x++) {
+    int i;
+    for (i=0; i<len; i++) {
+        int x;
+        for (x=0; x<320; x++) {
             new_buf[(x&3)*BAR_PLANE_SIZE + x/4] = 0x00;
             new_buf[(x&3)*BAR_PLANE_SIZE + x/4 + 17*80] = 0x00;
         }
-        for (int y=0; y<16; y++) {
-            for (int x=0; x<8; x++) {
+        int y;
+        for (y=0; y<16; y++) {
+            int x;
+            for (x=0; x<8; x++) {
                 int addr = (y+1)*320/4 + (x+8*i)/4;         // calculate offset in each bar_plane
                 if (font_data[str[i]][y] & (0x80 >> x)) {
                     new_buf[addr + (x&3)*BAR_PLANE_SIZE] = 0x77;

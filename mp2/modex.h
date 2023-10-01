@@ -136,8 +136,6 @@ extern int draw_horiz_line (int y);
 /* draw a vertical line at horizontal pixel x within the logical view window */
 extern int draw_vert_line (int x);
 
-/* @@ Checkpoint 1 @@ */
-extern unsigned char new_buf[320*18];
-void bar_to_buffer(char* my_buf);
+static void copy_bar (unsigned char* bar_graph, unsigned short scr_addr)
 
 #endif /* MODEX_H */

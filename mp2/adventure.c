@@ -181,7 +181,7 @@ static char status_msg[STATUS_MSG_LEN + 1] = {'\0'};
  *   SIDE EFFECTS: none
  */
 static void
-cancel_status_thread (void* ignore)
+cancel_status_thread (void* ignore) 
 {
     (void)pthread_cancel (status_thread_id);
 }
@@ -196,7 +196,7 @@ cancel_status_thread (void* ignore)
  *   SIDE EFFECTS: drives the display, etc.
  */
 static game_condition_t
-game_loop ()
+game_loop () 
 {
     /* 
      * Variables used to carry information between event loop ticks; see
@@ -252,7 +252,7 @@ game_loop ()
 	pthread_mutex_lock (&msg_lock);
 	if ('\0' == status_msg[0]) {
 		pthread_mutex_unlock (&msg_lock);
-		unsigned char* name = game_info.where.name;
+		unsigned char* name = room_name(game_info.where);
 		unsigned char* typed_command = get_typed_command ();
 
 		int room_length = strlen(name);
@@ -261,7 +261,8 @@ game_loop ()
 		
 		unsigned char new_bar[40];
 		strncpy(new_bar, name, room_length);
-		for (int j = 0; j < space_lenth; j++) {
+		int j;
+		for (j = 0; j < space_lenth; j++) {
 			new_bar[room_length + j] = ' ';
 		}
 		strncpy(new_bar + room_length + space_lenth, typed_command, type_lenth);
@@ -357,7 +358,7 @@ game_loop ()
  *   SIDE EFFECTS: may move the player, move objects, and/or redraw the screen
  */
 static int32_t
-handle_typing ()
+handle_typing () 
 {
     const char*      cmd;     /* command verb typed                */
     int32_t          cmd_len; /* length of command verb            */
@@ -481,7 +482,7 @@ handle_typing ()
  *   SIDE EFFECTS: none
  */
 static void
-init_game ()
+init_game () 
 {
     game_info.where = start_in_room ();
     game_info.map_x = 0;
@@ -502,7 +503,7 @@ init_game ()
  *   SIDE EFFECTS: shifts view window
  */
 static void
-move_photo_down ()
+move_photo_down () 
 {
     int32_t delta; /* Number of pixels by which to move. */
     int32_t idx;   /* Index over rows to redraw.         */
@@ -533,7 +534,7 @@ move_photo_down ()
  *   SIDE EFFECTS: shifts view window
  */
 static void
-move_photo_left ()
+move_photo_left () 
 {
     int32_t delta; /* Number of pixels by which to move. */
     int32_t idx;   /* Index over columns to redraw.      */
@@ -764,7 +765,7 @@ show_status (const char* s)
  *   RETURN VALUE: 0 on success, 3 in panic situations
  */
 int
-main ()
+main () 
 {
     game_condition_t game;  /* outcome of playing */
 
@@ -829,7 +830,7 @@ main ()
  *   SIDE EFFECTS: none
  */
 static int 
-sanity_check ()
+sanity_check () 
 {
     int32_t cnt[NUM_TC_VALUES]; /* count of synonymous commands      */
     int32_t idx;                /* index over list of typed commands */
