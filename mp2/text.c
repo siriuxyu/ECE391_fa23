@@ -562,8 +562,8 @@ unsigned char font_data[256][16] = {
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 };
 
-unsigned char new_buf[320*18];
 
+unsigned char new_buf[18][320];     // new_buf[Y][X]
 /*
  * text_to_graphics
  *   DESCRIPTION: converts a string of text to a buffer of graphics
@@ -575,17 +575,20 @@ unsigned char new_buf[320*18];
 char* text_to_graphics (const char* str){
     int len = strlen(str);
     for (int i=0; i<len; i++) {
-
+        for (int x=0; x<320; x++) {
+            new_buf[0][x] = 0x00;
+            new_buf[17][x] = 0x00;
+        }
         for (int y=0; y<16; y++) {
             for (int x=0; x<8; x++) {
-                if (pattern[y] & (0x80 >> x)) {
-                    new_buf[i*(y*8 + x)] = 0xFF;
+                if (font_data[str[i]][y] & (0x80 >> x)) {
+                    new_buf[y + 1][x + 8*i] = 0xFF;
                 } else {
-                    new_buf[i*(y*8 + j)] = 0x00;
+                    new_buf[y + 1][x + 8*i] = 0x00;
                 }
             }
         }
-        
+
     }
     
     return new_buf;

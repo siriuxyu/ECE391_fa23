@@ -1027,6 +1027,27 @@ copy_image (unsigned char* img, unsigned short scr_addr)
     );
 }
 
+/*
+ * bar_to_buffer
+ *   DESCRIPTION: Copy the status bar from the my_buffer to build buffer
+ *   INPUTS: my_buf -- pointer to graphical status bar buffer
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies a plane from the build buffer to video memory
+*/
+void bar_to_buffer(char* my_buf) {
+    int start_x = 0;
+    int start_y = 182;
+    for (int x=0; x<320; x++) {
+        int p_off = 3 - ((show_x + x) & 3);
+        for (int y=0; y<18; y++) {
+            int addr = img3 + (show_x >> 2) + show_y * SCROLL_X_WIDTH;
+            int buf_off = (x >> 2) + y * SCROLL_X_WIDTH + p_off * SCROLL_SIZE;
+            addr[buf_off] = my_buf[y+start_y][x];
+        }
+    }
+}
+
 
 #if defined(TEXT_RESTORE_PROGRAM)
 
