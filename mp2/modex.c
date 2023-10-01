@@ -88,7 +88,7 @@ static unsigned short mode_X_seq[NUM_SEQUENCER_REGS] = {
 };
 static unsigned short mode_X_CRTC[NUM_CRTC_REGS] = {
     0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1F07,
-    0x0008, 0x4109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+    0x0008, 0x0109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
     0x9C10, 0x8E11, 0x8F12, 0x2813, 0x0014, 0x9615, 0xB916, 0xE317,
     0xFF18
 };
@@ -97,7 +97,7 @@ static unsigned char mode_X_attr[NUM_ATTR_REGS * 2] = {
     0x04, 0x04, 0x05, 0x05, 0x06, 0x06, 0x07, 0x07, 
     0x08, 0x08, 0x09, 0x09, 0x0A, 0x0A, 0x0B, 0x0B, 
     0x0C, 0x0C, 0x0D, 0x0D, 0x0E, 0x0E, 0x0F, 0x0F,
-    0x10, 0x41, 0x11, 0x00, 0x12, 0x0F, 0x13, 0x00,
+    0x10, 0x61, 0x11, 0x00, 0x12, 0x0F, 0x13, 0x00,
     0x14, 0x00, 0x15, 0x00
 };
 static unsigned short mode_X_graphics[NUM_GRAPHICS_REGS] = {
@@ -528,6 +528,25 @@ show_screen ()
      */
     OUTW (0x03D4, (target_img & 0xFF00) | 0x0C);
     OUTW (0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
+}
+
+/*
+ * show_bar
+ *   DESCRIPTION: Show the bar on screen
+ *   INPUTS: the string on the bar 
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies from the build buffer to video memory;
+ *                 shifts the VGA display source to point to the new image
+ */   
+void
+show_bar (const char* str)
+{
+    unsigned char* bar_buffer = text_to_graphics(str);
+    for (int i=0; i<4; i++) {
+        SET_WRITE_MASK(0x100 << i);
+        copy_bar(bar_buffer + i*1440, 0x00);    // 1440 is 1920*18/4
+    }
 }
 
 
@@ -1026,6 +1045,37 @@ copy_image (unsigned char* img, unsigned short scr_addr)
       : "eax", "ecx", "memory"
     );
 }
+
+
+// @@ Checkpoint 1
+/*
+ * copy_bar
+ *   DESCRIPTION: Copy one plane of a screen from the build buffer to the 
+ *                video memory.
+ *   INPUTS: bar_graph -- a pointer to bar_buffer
+ *           scr_addr -- the destination offset in video memory
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies a plane from the build buffer to video memory
+ */   
+static void
+copy_bar (unsigned char* bar_graph, unsigned short scr_addr)
+{
+    /* 
+     * memcpy is actually probably good enough here, and is usually
+     * implemented using ISA-specific features like those below,
+     * but the code here provides an example of x86 string moves
+     */
+    asm volatile (
+        "cld                                                 ;"
+       	"movl $1440,%%ecx                                    ;"     // 320*18/4
+       	"rep movsb    # copy ECX bytes from M[ESI] to M[EDI]  "
+      : /* no outputs */
+      : "S" (bar_graph), "D" (mem_image + scr_addr) 
+      : "eax", "ecx", "memory"
+    );
+}
+
 
 /*
  * bar_to_buffer

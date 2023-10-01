@@ -43,6 +43,7 @@
 /* Standard VGA text font. */
 extern unsigned char font_data[256][16];
 
-*char text_to_graphics (char c);
+#define BAR_PLANE_SIZE  1440      // 320 * 18 / 4
+unsigned char* text_to_graphics (const char* str);
 
 #endif /* TEXT_H */

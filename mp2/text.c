@@ -563,7 +563,7 @@ unsigned char font_data[256][16] = {
 };
 
 
-unsigned char new_buf[18][320];     // new_buf[Y][X]
+unsigned char new_buf[18*320];     // new_buf[Y*X]
 /*
  * text_to_graphics
  *   DESCRIPTION: converts a string of text to a buffer of graphics
@@ -572,23 +572,23 @@ unsigned char new_buf[18][320];     // new_buf[Y][X]
  *   RETURN VALUE: pointer to 
  *   SIDE EFFECTS: changes the first 32 palette colors
  */ 
-char* text_to_graphics (const char* str){
+unsigned char* text_to_graphics (const char* str){
     int len = strlen(str);
     for (int i=0; i<len; i++) {
         for (int x=0; x<320; x++) {
-            new_buf[0][x] = 0x00;
-            new_buf[17][x] = 0x00;
+            new_buf[(x&3)*BAR_PLANE_SIZE + x/4] = 0x00;
+            new_buf[(x&3)*BAR_PLANE_SIZE + x/4 + 17*80] = 0x00;
         }
         for (int y=0; y<16; y++) {
             for (int x=0; x<8; x++) {
+                int addr = (y+1)*320/4 + (x+8*i)/4;         // calculate offset in each bar_plane
                 if (font_data[str[i]][y] & (0x80 >> x)) {
-                    new_buf[y + 1][x + 8*i] = 0xFF;
+                    new_buf[addr + (x&3)*BAR_PLANE_SIZE] = 0x77;
                 } else {
-                    new_buf[y + 1][x + 8*i] = 0x00;
+                    new_buf[addr + (x&3)*BAR_PLANE_SIZE] = 0x00;
                 }
             }
         }
-
     }
     
     return new_buf;
