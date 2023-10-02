@@ -87,10 +87,10 @@ static unsigned short mode_X_seq[NUM_SEQUENCER_REGS] = {
     0x0100, 0x2101, 0x0F02, 0x0003, 0x0604
 };
 static unsigned short mode_X_CRTC[NUM_CRTC_REGS] = {
-    0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1F07,
+    0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1707,
     0x0008, 0x0109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
     0x9C10, 0x8E11, 0x8F12, 0x2813, 0x0014, 0x9615, 0xB916, 0xE317,
-    0xFF18
+    0x6C18
 };
 static unsigned char mode_X_attr[NUM_ATTR_REGS * 2] = {
     0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03, 
@@ -142,6 +142,7 @@ static void fill_palette_text ();
 static void write_font_data ();
 static void set_text_mode_3 (int clear_scr);
 static void copy_image (unsigned char* img, unsigned short scr_addr);
+static void copy_bar (unsigned char* bar, unsigned short scr_addr);
 
 
 /* 
@@ -305,7 +306,7 @@ set_mode_X (void (*horiz_fill_fn) (int, int, unsigned char[SCROLL_X_DIM]),
     }
 
     /* One display page goes at the start of video memory. */
-    target_img = 0x0000; 
+    target_img = 0x1000; 
 
     /* Map video memory and obtain permission for VGA port access. */
     if (open_memory_and_ports () == -1)
@@ -530,27 +531,14 @@ show_screen ()
     OUTW (0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
 }
 
-
-/*
- * show_bar
- *   DESCRIPTION: Show the bar on screen
- *   INPUTS: the string on the bar 
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: copies from the build buffer to video memory;
- *                 shifts the VGA display source to point to the new image
- */   
-void
-show_bar (const char* str)
-{
-    unsigned char* bar_buffer = text_to_graphics(str);
+void show_bar (const char* str) {
+    unsigned char* bar_buf = text_to_graphics(str);
     int i;
     for (i=0; i<4; i++) {
         SET_WRITE_MASK(0x100 << i);
-        copy_bar(bar_buffer + i*1440, 0x00);    // 1440 is 1920*18/4
+        copy_bar(bar_buf + i*1440, 0x00);    // 1440 is 320*18/4
     }
 }
-
 
 /*
  * clear_screens
@@ -623,7 +611,7 @@ draw_vert_line (int x)
     /* Copy image data into appropriate planes in build buffer. */
     for (i = 0; i < SCROLL_Y_DIM; i++) {
         addr[p_off * SCROLL_SIZE] = buf[i];
-        addr++;
+        addr+=SCROLL_X_WIDTH;
 	// if (--p_off < 0) {
 	//     p_off = 3;
 	//     addr++;
@@ -1048,19 +1036,8 @@ copy_image (unsigned char* img, unsigned short scr_addr)
     );
 }
 
-// @@ Checkpoint 1
-/*
- * copy_bar
- *   DESCRIPTION: Copy one plane of a screen from the build buffer to the 
- *                video memory.
- *   INPUTS: bar_graph -- a pointer to bar_buffer
- *           scr_addr -- the destination offset in video memory
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: copies a plane from the build buffer to video memory
- */   
 static void
-copy_bar (unsigned char* bar_graph, unsigned short scr_addr)
+copy_bar (unsigned char* bar, unsigned short scr_addr)
 {
     /* 
      * memcpy is actually probably good enough here, and is usually
@@ -1069,10 +1046,10 @@ copy_bar (unsigned char* bar_graph, unsigned short scr_addr)
      */
     asm volatile (
         "cld                                                 ;"
-       	"movl $1440,%%ecx                                    ;"     // 320*18/4
+       	"movl $1440,%%ecx                                   ;"
        	"rep movsb    # copy ECX bytes from M[ESI] to M[EDI]  "
       : /* no outputs */
-      : "S" (bar_graph), "D" (mem_image + scr_addr) 
+      : "S" (bar), "D" (mem_image + scr_addr) 
       : "eax", "ecx", "memory"
     );
 }

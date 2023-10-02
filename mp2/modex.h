@@ -136,6 +136,8 @@ extern int draw_horiz_line (int y);
 /* draw a vertical line at horizontal pixel x within the logical view window */
 extern int draw_vert_line (int x);
 
-static void copy_bar (unsigned char* bar_graph, unsigned short scr_addr)
+void show_bar (const char* str);
+
+
 
 #endif /* MODEX_H */

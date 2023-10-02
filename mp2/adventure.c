@@ -181,7 +181,7 @@ static char status_msg[STATUS_MSG_LEN + 1] = {'\0'};
  *   SIDE EFFECTS: none
  */
 static void
-cancel_status_thread (void* ignore) 
+cancel_status_thread (void* ignore)
 {
     (void)pthread_cancel (status_thread_id);
 }
@@ -196,7 +196,7 @@ cancel_status_thread (void* ignore)
  *   SIDE EFFECTS: drives the display, etc.
  */
 static game_condition_t
-game_loop () 
+game_loop ()
 {
     /* 
      * Variables used to carry information between event loop ticks; see
@@ -249,30 +249,62 @@ game_loop ()
 
 	show_screen ();
 
-	pthread_mutex_lock (&msg_lock);
+	pthread_mutex_lock(&msg_lock);
 	if ('\0' == status_msg[0]) {
-		pthread_mutex_unlock (&msg_lock);
-		unsigned char* name = room_name(game_info.where);
-		unsigned char* typed_command = get_typed_command ();
+		pthread_mutex_unlock(&msg_lock);
+		const char* name = room_name(game_info.where);
+		const char* typed_command = get_typed_command();
 
-		int room_length = strlen(name);
-		int type_lenth = strlen(typed_command) + 1;
-		int space_lenth = 40 - room_length - type_lenth - 4;		// 40: length of the status bar; determine spaces
-		
-		unsigned char new_bar[40];
-		strncpy(new_bar, name, room_length);
-		int j;
-		for (j = 0; j < space_lenth; j++) {
-			new_bar[room_length + j] = ' ';
+		char new_bar[41];
+
+		int room_len = strlen(name);
+		strncpy(new_bar, name, room_len);
+
+		int typed_len;
+
+		if (strlen(typed_command) >= 20) {
+			// char limit_command[20];
+			// strncpy(limit_command, typed_command, 20);
+			typed_len = 20;
+			strncpy(new_bar + 40 - typed_len, typed_command, 20);
 		}
-		strncpy(new_bar + room_length + space_lenth, typed_command, type_lenth);
-		new_bar[39] = '_';
+		else {													// if the typed length <20
+			// char limit_command[strlen(typed_command)];
+			// strcpy(limit_command, typed_command);
+			typed_len = strlen(typed_command);
+			strncpy(new_bar + 40 -1 - typed_len, typed_command, typed_len);
+			new_bar[39] = '_';
+		}
+		
+		int space_len = 40 - room_len - typed_len -1;
+		int j;
+		for (j=0; j<space_len; j++) {
+			new_bar[room_len + j] = ' ';
+		}
+		new_bar[40] = '\0';
 		
 		show_bar (new_bar);
+
 	}
 	else {
-	    show_bar (status_msg);
+		// int msg_len = strlen(status_msg);
+		// int lspace = (40-msg_len) / 2;
+		// char new_msg[40];
+		// int i;
+		// for (i=0; i<lspace; i++) {
+		// 	new_msg[i] = ' ';
+			
+		// }
+		// strncpy(new_msg+lspace, status_msg, msg_len);
+		// for (i=0; i<lspace; i++) {
+		// 	new_msg[i+ lspace + msg_len +1] = ' ';
+		// }
+		// show_bar (new_msg);
+		show_bar(status_msg);
+		pthread_mutex_unlock(&msg_lock);
 	}
+
+
 
 	/*
 	 * Wait for tick.  The tick defines the basic timing of our
@@ -358,7 +390,7 @@ game_loop ()
  *   SIDE EFFECTS: may move the player, move objects, and/or redraw the screen
  */
 static int32_t
-handle_typing () 
+handle_typing ()
 {
     const char*      cmd;     /* command verb typed                */
     int32_t          cmd_len; /* length of command verb            */
@@ -482,7 +514,7 @@ handle_typing ()
  *   SIDE EFFECTS: none
  */
 static void
-init_game () 
+init_game ()
 {
     game_info.where = start_in_room ();
     game_info.map_x = 0;
@@ -503,7 +535,7 @@ init_game ()
  *   SIDE EFFECTS: shifts view window
  */
 static void
-move_photo_down () 
+move_photo_down ()
 {
     int32_t delta; /* Number of pixels by which to move. */
     int32_t idx;   /* Index over rows to redraw.         */
@@ -534,7 +566,7 @@ move_photo_down ()
  *   SIDE EFFECTS: shifts view window
  */
 static void
-move_photo_left () 
+move_photo_left ()
 {
     int32_t delta; /* Number of pixels by which to move. */
     int32_t idx;   /* Index over columns to redraw.      */
@@ -765,7 +797,7 @@ show_status (const char* s)
  *   RETURN VALUE: 0 on success, 3 in panic situations
  */
 int
-main () 
+main ()
 {
     game_condition_t game;  /* outcome of playing */
 
@@ -830,7 +862,7 @@ main ()
  *   SIDE EFFECTS: none
  */
 static int 
-sanity_check () 
+sanity_check ()
 {
     int32_t cnt[NUM_TC_VALUES]; /* count of synonymous commands      */
     int32_t idx;                /* index over list of typed commands */
