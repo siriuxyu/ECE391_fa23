@@ -12,6 +12,7 @@
  - __Reason__
     - As the code below shows, I didn't modify the position of first screen on video memory.
     - Since the bar is also at 0x0000 on video memory. VGA will scan the first screen(with a top bar), switch to second(without top bar), thus making the top bar blinking.
+    - in **set_mode_X()** in ***modex.c***
 
             target_img = 0x0000;
 
