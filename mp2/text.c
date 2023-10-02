@@ -566,7 +566,7 @@ unsigned char font_data[256][16] = {
 unsigned char new_buf[BAR_PLANE_SIZE * 4];          // 4 bar_planes
 
 /*
- *  text_to_graphics
+ * text_to_graphics
  *  DESCRIPTION: convert text to graphics
  *  INPUT: str -- the string to be converted
  *  OUTPUT: none
