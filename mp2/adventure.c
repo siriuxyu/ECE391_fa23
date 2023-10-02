@@ -249,20 +249,21 @@ game_loop ()
 
 	show_screen ();
 
+	/* @@ Checkpoint1 */
 	pthread_mutex_lock(&msg_lock);
 	if ('\0' == status_msg[0]) {
-		pthread_mutex_unlock(&msg_lock);
+		pthread_mutex_unlock(&msg_lock);	// nothing related to msg_lock
 		const char* name = room_name(game_info.where);
 		const char* typed_command = get_typed_command();
 
-		char new_bar[41];
+		char new_bar[41];					// initialize a new bar with \0 at the end
 
 		int room_len = strlen(name);
-		strncpy(new_bar, name, room_len);
+		strncpy(new_bar, name, room_len);	// first copy the room name
 
 		int typed_len;
 
-		if (strlen(typed_command) >= 20) {
+		if (strlen(typed_command) >= 20) {						// limit the typed command to 20
 			// char limit_command[20];
 			// strncpy(limit_command, typed_command, 20);
 			typed_len = 20;
@@ -273,7 +274,7 @@ game_loop ()
 			// strcpy(limit_command, typed_command);
 			typed_len = strlen(typed_command);
 			strncpy(new_bar + 40 -1 - typed_len, typed_command, typed_len);
-			new_bar[39] = '_';
+			new_bar[39] = '_';									// add a '_' at the end
 		}
 		
 		int space_len = 40 - room_len - typed_len -1;
@@ -286,7 +287,7 @@ game_loop ()
 		show_bar (new_bar);
 
 	}
-	else {
+	else {								// if there is a status message
 		// int msg_len = strlen(status_msg);
 		// int lspace = (40-msg_len) / 2;
 		// char new_msg[40];

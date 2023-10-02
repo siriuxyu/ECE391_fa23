@@ -531,14 +531,24 @@ show_screen ()
     OUTW (0x03D4, ((target_img & 0x00FF) << 8) | 0x0D);
 }
 
+
+/*
+ * show_bar
+ *   DESCRIPTION: Show the bar on the video display.
+ *   INPUTS: the string to be shown
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies from the bar buffer to video memory;
+ */   
 void show_bar (const char* str) {
-    unsigned char* bar_buf = text_to_graphics(str);
+    unsigned char* bar_buf = text_to_graphics(str);     // call text_to_graphics in text.c
     int i;
-    for (i=0; i<4; i++) {
+    for (i=0; i<4; i++) {                               // fill in each plane
         SET_WRITE_MASK(0x100 << i);
-        copy_bar(bar_buf + i*1440, 0x00);    // 1440 is 320*18/4
+        copy_bar(bar_buf + i*1440, 0x00);               // 1440 is 320*18/4
     }
 }
+
 
 /*
  * clear_screens
@@ -1036,6 +1046,17 @@ copy_image (unsigned char* img, unsigned short scr_addr)
     );
 }
 
+
+/*
+ * copy_bar
+ *   DESCRIPTION: Copy one the bar from the bar buffer to the
+ *               video memory.
+ *   INPUTS: bar -- a pointer to a single screen plane in the bar buffer
+ *           scr_addr -- the destination offset in video memory
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: copies a plane from the build buffer to video memory
+ */   
 static void
 copy_bar (unsigned char* bar, unsigned short scr_addr)
 {

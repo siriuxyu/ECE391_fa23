@@ -563,34 +563,41 @@ unsigned char font_data[256][16] = {
 };
 
 
-unsigned char new_buf[BAR_PLANE_SIZE * 4];
+unsigned char new_buf[BAR_PLANE_SIZE * 4];          // 4 bar_planes
 
-
+/*
+ *  text_to_graphics
+ *  DESCRIPTION: convert text to graphics
+ *  INPUT: str -- the string to be converted
+ *  OUTPUT: none
+ *  RETURN VALUE: the pointer to the new_buf
+ *  SIDE EFFECT: none
+ */
 unsigned char* text_to_graphics(const char* str){
     int len = strlen(str);
-    int space = (40 - len) / 2;       // calculate the space in the left
+    int space = (40 - len) / 2;                     // calculate the space in the left, 40 is max length of string
     int i;
     int init_x, init_y;
-    for (init_x=0; init_x<320; init_x++) {
-        for (init_y=0; init_y<18; init_y++) {
-            new_buf[init_x + init_y*320] = 7;
+    for (init_x=0; init_x<320; init_x++) {          // width = 320
+        for (init_y=0; init_y<18; init_y++) {       // height = 18
+            new_buf[init_x + init_y*320] = 7;       // background color = 7
         }
     }
 
     for (i=0; i<len; i++){
         int xx;
         for (xx=0; xx<320; xx++){
-            new_buf[(xx&3)*BAR_PLANE_SIZE + xx/4] = 7;
-            new_buf[(xx&3)*BAR_PLANE_SIZE + xx/4 + 17*80] = 7;
+            new_buf[(xx&3)*BAR_PLANE_SIZE + xx/4] = 7;              // top line of pixels
+            new_buf[(xx&3)*BAR_PLANE_SIZE + xx/4 + 17*80] = 7;      // bottom line of pixels
         }
         int y;
         for (y=0; y<16; y++){
             int x;
             for (x=0; x<8; x++) {
-                int addr = (y+1)*320/4 + (x+8*i + space*8)/4;         // calculate offset in each bar_plane
+                int addr = (y+1)*320/4 + (x+8*i + space*8)/4;       // calculate offset in each bar_plane
                 
                 if (font_data[(int)str[i]][y] & (0x80 >> x)) {
-                    new_buf[addr + (x&3)*BAR_PLANE_SIZE] = 0x30;
+                    new_buf[addr + (x&3)*BAR_PLANE_SIZE] = 0x30;    // foreground color = 0x30
                 } else {
                     new_buf[addr + (x&3)*BAR_PLANE_SIZE] = 7;
                 }
