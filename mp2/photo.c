@@ -476,10 +476,16 @@ read_photo (const char* fname)
 	     * the game puts up a photo, you should then change the palette 
 	     * to match the colors needed for that photo.
 	     */
-	    p->img[p->hdr.width * y + x] = (((pixel >> 14) << 4) |
-					    (((pixel >> 9) & 0x3) << 2) |
-					    ((pixel >> 3) & 0x3));
-	}
+		
+		/* Start Writing at color 64 */
+		OUTB(0x03C8, 0x40);				// 0x40 = 64
+		/* Write 192 colors */
+		OUTB(0x03C9, p->palette, 192 * 3);
+		
+	//    p->img[p->hdr.width * y + x] = (((pixel >> 14) << 4) |
+	// 				    (((pixel >> 9) & 0x3) << 2) |
+	// 				    ((pixel >> 3) & 0x3));
+		}
     }
 
     /* All done.  Return success. */
