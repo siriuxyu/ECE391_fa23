@@ -346,6 +346,9 @@ prep_room (const room_t* r)
 {
     /* Record the current room. */
     cur_room = r;
+	OUTB (0x03C8, 0x40);				// 0x40 = 64
+	// /* Write 192 colors */
+	REP_OUTSB (0x03C9, r->palette, 192 * 3);
 }
 
 
@@ -599,14 +602,17 @@ read_photo (const char* fname)
 		for (x=0; x < p->hdr.width; x++) {
 			int pixel_idx = y*p->hdr.width + x;
 			int node4_idx = mapping[pixel_idx];
+			// int new_node4_idx = ranking[node4_idx];
 			int node2_idx = (((node4_idx>>10) & 0x03)<<4) | (((node4_idx>>6) & 0x03)<<2) | ((node4_idx>>2) & 0x03);
-			p->img[pixel_idx] = 128 + node2_idx;	// map the index from 192 to 256-1
+			if (discovered[node4_idx] != 1) {
+				p->img[pixel_idx] = 192 + node2_idx;	// map the index from 192 to 256-1
+			}
 		}
 	}
 
-		OUTB (0x03C8, 0x40);				// 0x40 = 64
-		/* Write 192 colors */
-		REP_OUTSB (0x03C9, p->palette, 192 * 3);
+	// OUTB (0x03C8, 0x40);				// 0x40 = 64
+	// /* Write 192 colors */
+	// REP_OUTSB (0x03C9, p->palette, 192 * 3);
 
     /* All done.  Return success. */
     (void)fclose (in);
