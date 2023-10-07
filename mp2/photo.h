@@ -90,6 +90,12 @@ typedef struct octnode_t {
 } octnode_t;
 
 
+int compare(const void* a, const void* b);
+
+void init_octree (octnode_t* octree)
+
+void init_level2_octree (octnode_t* octree);
+
 
 
 /* 

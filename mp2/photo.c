@@ -87,6 +87,34 @@ struct image_t {
 static const room_t* cur_room = NULL; 
 
 
+/* macro used to write a byte to a port */
+#define OUTB(port,val)                                                  \
+do {                                                                    \
+    asm volatile ("                                                     \
+        outb %b1,(%w0)                                                  \
+    " : /* no outputs */                                                \
+      : "d" ((port)), "a" ((val))                                       \
+      : "memory", "cc");                                                \
+} while (0)
+
+
+/* 
+ * macro used to write an array of one-byte values to two consecutive ports 
+ */
+#define REP_OUTSB(port,source,count)                                    \
+do {                                                                    \
+    asm volatile ("                                                     \
+     1: movb 0(%1),%%al                                                ;\
+	outb %%al,(%w2)                                                ;\
+	incl %1                                                        ;\
+	decl %0                                                        ;\
+	jne 1b                                                          \
+    " : /* no outputs */                                                \
+      : "c" ((count)), "S" ((source)), "d" ((port))                     \
+      : "eax", "memory", "cc");                                         \
+} while (0)
+
+
 /* 
  * fill_horiz_buffer
  *   DESCRIPTION: Given the (x,y) map pixel coordinate of the leftmost 
@@ -448,7 +476,7 @@ read_photo (const char* fname)
 	int mapping[p->hdr.width * p->hdr.height];
 	int discovered[4096];
 
-	octnode_t new_tree[4096];		// 4096 = 8^4, 4 levels of octree
+	octnode_t le4_tree[4096];		// 4096 = 8^4, 4 levels of octree
 	octnode_t le2_tree[64];			// 64 = 8^2, 2nd level of octree
 	init_octree(new_tree);
 	init_level2_octree(le2_tree);
@@ -461,65 +489,65 @@ read_photo (const char* fname)
     for (y = p->hdr.height; y-- > 0; ) {
 
 	/* Loop over columns from left to right. */
-	for (x = 0; p->hdr.width > x; x++) {
-	    /* 
-	     * Try to read one 16-bit pixel.  On failure, clean up and 
-	     * return NULL.
-	     */
-	    if (1 != fread (&pixel, sizeof (pixel), 1, in)) {
-		free (p->img);
-		free (p);
-	        (void)fclose (in);
-		return NULL;
+		for (x = 0; p->hdr.width > x; x++) {
+			/* 
+			* Try to read one 16-bit pixel.  On failure, clean up and 
+			* return NULL.
+			*/
+			if (1 != fread (&pixel, sizeof (pixel), 1, in)) {
+			free (p->img);
+			free (p);
+				(void)fclose (in);
+			return NULL;
 
-		int pixel_idx = y*p->hdr.width + x;
-		int r = ((pixel >> 11) & 0x1F) <<1;		// RGB[15:11] AND 00011111
-		int g = (pixel >> 5) & 0x3F;			// RGB[10:5]  AND 00111111
-		int b = (pixel & 0x1F) << 1;			// RGB[4:0]   AND 00011111
+			int pixel_idx = y*p->hdr.width + x;
+			int r = ((pixel >> 11) & 0x1F) <<1;		// RGB[15:11] AND 00011111
+			int g = (pixel >> 5) & 0x3F;			// RGB[10:5]  AND 00111111
+			int b = (pixel & 0x1F) << 1;			// RGB[4:0]   AND 00011111
 
-		// 4:4:4 octree node
-		int node4_idx = (r >> 2) << 8 | (g >> 2) << 4 | (b >> 2);
-		new_tree[node4_idx].r_tot += r;			// add to total
-		new_tree[node4_idx].g_tot += g;
-		new_tree[node4_idx].b_tot += b;
-		new_tree[node4_idx].count++;				// increment count
+			// 4:4:4 octree node
+			int node4_idx = (r >> 2) << 8 | (g >> 2) << 4 | (b >> 2);
+			le4_tree[node4_idx].r_tot += r;			// add to total
+			le4_tree[node4_idx].g_tot += g;
+			le4_tree[node4_idx].b_tot += b;
+			le4_tree[node4_idx].count++;				// increment count
 
-		mapping[pixel_idx] = node4_idx;				// map the index
+			ranking[pixel_idx] = node4_idx;				// map the index
 
-	    /* 
-	     * 16-bit pixel is coded as 5:6:5 RGB (5 bits red, 6 bits green,
-	     * and 6 bits blue).  We change to 2:2:2, which we've set for the
-	     * game objects.  You need to use the other 192 palette colors
-	     * to specialize the appearance of each photo.
-	     *
-	     * In this code, you need to calculate the p->palette values,
-	     * which encode 6-bit RGB as arrays of three uint8_t's.  When
-	     * the game puts up a photo, you should then change the palette 
-	     * to match the colors needed for that photo.
-	     */
-		
-		/* Start Writing at color 64 */
-		
-	//    p->img[p->hdr.width * y + x] = (((pixel >> 14) << 4) |
-	// 				    (((pixel >> 9) & 0x3) << 2) |
-	// 				    ((pixel >> 3) & 0x3));
+			/* 
+			* 16-bit pixel is coded as 5:6:5 RGB (5 bits red, 6 bits green,
+			* and 6 bits blue).  We change to 2:2:2, which we've set for the
+			* game objects.  You need to use the other 192 palette colors
+			* to specialize the appearance of each photo.
+			*
+			* In this code, you need to calculate the p->palette values,
+			* which encode 6-bit RGB as arrays of three uint8_t's.  When
+			* the game puts up a photo, you should then change the palette 
+			* to match the colors needed for that photo.
+			*/
+			
+			/* Start Writing at color 64 */
+			
+		//    p->img[p->hdr.width * y + x] = (((pixel >> 14) << 4) |
+		// 				    (((pixel >> 9) & 0x3) << 2) |
+		// 				    ((pixel >> 3) & 0x3));
+			}
 		}
-    }
-
-	qsort(new_tree, 4096, sizeof(octnode_t), compare);	// sort the octree
+	}
+	qsort(le4_tree, 4096, sizeof(octnode_t), compare);	// sort the octree
 
 	int i;
 	for (i = 0; i < 4096; i++)
 	{
-		ranking[new_tree[i].idx] = i;		// map the index
-		if (new_tree[i].count == 0) {
+		ranking[le4_tree[i].idx] = i;		// map the index
+		if (le4_tree[i].count == 0) {
 			continue;
 		}
 		if (i < 128) {
-			p->palette[i][0] = new_tree[i].r_tot / new_tree[i].count;
-			p->palette[i][1] = new_tree[i].g_tot / new_tree[i].count;
-			p->palette[i][2] = new_tree[i].b_tot / new_tree[i].count;
-			discovered[new_tree[i].idx] = 1;
+			p->palette[i][0] = le4_tree[i].r_tot / le4_tree[i].count;
+			p->palette[i][1] = le4_tree[i].g_tot / le4_tree[i].count;
+			p->palette[i][2] = le4_tree[i].b_tot / le4_tree[i].count;
+			discovered[le4_tree[i].idx] = 1;
 		}
 
 	}
@@ -528,7 +556,7 @@ read_photo (const char* fname)
 			int pixel_idx = y*p->hdr.width + x;
 			int node4_idx = mapping[pixel_idx];
 			if (ranking(node4_idx) < 128) {
-				p->img[pixel_idx] = ranking(node4_idx) = 64;	// map the index from 64 to 192-1
+				p->img[pixel_idx] = ranking[node4_idx] + 64;	// map the index from 64 to 192-1
 			}
 		}
 	}
@@ -546,15 +574,16 @@ read_photo (const char* fname)
 			int g4 = ((j >> 2) & 0x03) << 4;
 			int b4 = (j & 0x03);
 			int level4_idx = r2 | g2 | b2 | r4 | g4 | b4;
+			int new_idx = ranking[level4_idx];
 			if (discovered[level4_idx] != 1) {
 				// le2_tree[i].r_tot += new_tree[level4_idx].r_tot / new_tree[level4_idx].count;
 				// le2_tree[i].g_tot += new_tree[level4_idx].g_tot / new_tree[level4_idx].count;
 				// le2_tree[i].b_tot += new_tree[level4_idx].b_tot / new_tree[level4_idx].count;
 				// le2_tree[i].count++;
-				le2_tree[i].r_tot += new_tree[level4_idx].r_tot;
-				le2_tree[i].g_tot += new_tree[level4_idx].g_tot;
-				le2_tree[i].b_tot += new_tree[level4_idx].b_tot;
-				le2_tree[i].count += new_tree[level4_idx].count;
+				le2_tree[i].r_tot += le4_tree[new_idx].r_tot;
+				le2_tree[i].g_tot += le4_tree[new_idx].g_tot;
+				le2_tree[i].b_tot += le4_tree[new_idx].b_tot;
+				le2_tree[i].count += le4_tree[new_idx].count;
 			}
 		}
 		p->palette[i+128][0] = le2_tree[i].r_tot / le2_tree[i].count;
@@ -574,13 +603,15 @@ read_photo (const char* fname)
 
 
 
-		OUTB(0x03C8, 0x40);				// 0x40 = 64
+		OUTB (0x03C8, 0x40);				// 0x40 = 64
 		/* Write 192 colors */
-		OUTB(0x03C9, p->palette, 192 * 3);
+		REP_OUTSB (0x03C9, p->palette, 192 * 3);
     /* All done.  Return success. */
     (void)fclose (in);
     return p;
 }
+
+
 
 
 int compare(const void* a, const void* b) {
@@ -591,6 +622,8 @@ int compare(const void* a, const void* b) {
 	else if (nodeA->count > nodeB->count) return -1;
 	else return 0;
 }
+
+
 
 
 void init_octree (octnode_t* octree) {
