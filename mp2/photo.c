@@ -444,6 +444,15 @@ read_photo (const char* fname)
 	return NULL;
     }
 
+	int ranking[4096];
+	int mapping[p->hdr.width * p->hdr.height];
+	int discovered[4096];
+
+	octnode_t new_tree[4096];		// 4096 = 8^4, 4 levels of octree
+	octnode_t le2_tree[64];			// 64 = 8^2, 2nd level of octree
+	init_octree(new_tree);
+	init_level2_octree(le2_tree);
+
     /* 
      * Loop over rows from bottom to top.  Note that the file is stored
      * in this order, whereas in memory we store the data in the reverse
@@ -453,7 +462,6 @@ read_photo (const char* fname)
 
 	/* Loop over columns from left to right. */
 	for (x = 0; p->hdr.width > x; x++) {
-
 	    /* 
 	     * Try to read one 16-bit pixel.  On failure, clean up and 
 	     * return NULL.
@@ -464,7 +472,20 @@ read_photo (const char* fname)
 	        (void)fclose (in);
 		return NULL;
 
-	    }
+		int pixel_idx = y*p->hdr.width + x;
+		int r = ((pixel >> 11) & 0x1F) <<1;		// RGB[15:11] AND 00011111
+		int g = (pixel >> 5) & 0x3F;			// RGB[10:5]  AND 00111111
+		int b = (pixel & 0x1F) << 1;			// RGB[4:0]   AND 00011111
+
+		// 4:4:4 octree node
+		int node4_idx = (r >> 2) << 8 | (g >> 2) << 4 | (b >> 2);
+		new_tree[node4_idx].r_tot += r;			// add to total
+		new_tree[node4_idx].g_tot += g;
+		new_tree[node4_idx].b_tot += b;
+		new_tree[node4_idx].count++;				// increment count
+
+		mapping[pixel_idx] = node4_idx;				// map the index
+
 	    /* 
 	     * 16-bit pixel is coded as 5:6:5 RGB (5 bits red, 6 bits green,
 	     * and 6 bits blue).  We change to 2:2:2, which we've set for the
@@ -478,9 +499,6 @@ read_photo (const char* fname)
 	     */
 		
 		/* Start Writing at color 64 */
-		OUTB(0x03C8, 0x40);				// 0x40 = 64
-		/* Write 192 colors */
-		OUTB(0x03C9, p->palette, 192 * 3);
 		
 	//    p->img[p->hdr.width * y + x] = (((pixel >> 14) << 4) |
 	// 				    (((pixel >> 9) & 0x3) << 2) |
@@ -488,9 +506,111 @@ read_photo (const char* fname)
 		}
     }
 
+	qsort(new_tree, 4096, sizeof(octnode_t), compare);	// sort the octree
+
+	int i;
+	for (i = 0; i < 4096; i++)
+	{
+		ranking[new_tree[i].idx] = i;		// map the index
+		if (new_tree[i].count == 0) {
+			continue;
+		}
+		if (i < 128) {
+			p->palette[i][0] = new_tree[i].r_tot / new_tree[i].count;
+			p->palette[i][1] = new_tree[i].g_tot / new_tree[i].count;
+			p->palette[i][2] = new_tree[i].b_tot / new_tree[i].count;
+			discovered[new_tree[i].idx] = 1;
+		}
+
+	}
+	for (y=0; y < p->hdr.height; y++) {
+		for (x=0; x < p->hdr.width; x++) {
+			int pixel_idx = y*p->hdr.width + x;
+			int node4_idx = mapping[pixel_idx];
+			if (ranking(node4_idx) < 128) {
+				p->img[pixel_idx] = ranking(node4_idx) = 64;	// map the index from 64 to 192-1
+			}
+		}
+	}
+
+
+	// discard the point from level 2
+	for (i = 0; i < 64; i++) {
+		int r2 = ((i >> 4) & 0x03) << 10;
+		int g2 = ((i >> 2) & 0x03) << 6;
+		int b2 = (i & 0x03) << 2;
+		int j;
+		// int level2_idx = (r2>>6) | (g2>>4) | b2;
+		for (j = 0; j < 64; j++) {
+			int r4 = ((j >> 4) & 0x03) << 8;
+			int g4 = ((j >> 2) & 0x03) << 4;
+			int b4 = (j & 0x03);
+			int level4_idx = r2 | g2 | b2 | r4 | g4 | b4;
+			if (discovered[level4_idx] != 1) {
+				// le2_tree[i].r_tot += new_tree[level4_idx].r_tot / new_tree[level4_idx].count;
+				// le2_tree[i].g_tot += new_tree[level4_idx].g_tot / new_tree[level4_idx].count;
+				// le2_tree[i].b_tot += new_tree[level4_idx].b_tot / new_tree[level4_idx].count;
+				// le2_tree[i].count++;
+				le2_tree[i].r_tot += new_tree[level4_idx].r_tot;
+				le2_tree[i].g_tot += new_tree[level4_idx].g_tot;
+				le2_tree[i].b_tot += new_tree[level4_idx].b_tot;
+				le2_tree[i].count += new_tree[level4_idx].count;
+			}
+		}
+		p->palette[i+128][0] = le2_tree[i].r_tot / le2_tree[i].count;
+		p->palette[i+128][1] = le2_tree[i].g_tot / le2_tree[i].count;
+		p->palette[i+128][2] = le2_tree[i].b_tot / le2_tree[i].count;
+
+	}
+
+	for (y=0; y < p->hdr.height; y++) {
+		for (x=0; x < p->hdr.width; x++) {
+			int pixel_idx = y*p->hdr.width + x;
+			int node4_idx = mapping[pixel_idx];
+			int node2_idx = (((node4_idx>>10) & 0x03)<<4) | (((node4_idx>>6) & 0x03)<<2) | ((node4_idx>>2) & 0x03);
+			p->img[pixel_idx] = 128 + node2_idx;	// map the index from 192 to 256-1
+		}
+	}
+
+
+
+		OUTB(0x03C8, 0x40);				// 0x40 = 64
+		/* Write 192 colors */
+		OUTB(0x03C9, p->palette, 192 * 3);
     /* All done.  Return success. */
     (void)fclose (in);
     return p;
 }
 
 
+int compare(const void* a, const void* b) {
+	const octnode_t* nodeA = (const octnode_t*) a;
+    const octnode_t* nodeB = (const octnode_t*) b;
+
+	if (nodeA->count < nodeB->count) return 1;
+	else if (nodeA->count > nodeB->count) return -1;
+	else return 0;
+}
+
+
+void init_octree (octnode_t* octree) {
+	int i;
+	for (i = 0; i < 4096; i++) {		// same as the size
+		octree[i].idx = i;
+		octree[i].r_tot = 0;
+		octree[i].g_tot = 0;
+		octree[i].b_tot = 0;
+		octree[i].count = 0;
+	}
+}
+
+void init_level2_octree (octnode_t* octree) {
+	int i;
+	for (i = 0; i < 64; i++) {		// same as the size
+		octree[i].idx = i;
+		octree[i].r_tot = 0;
+		octree[i].g_tot = 0;
+		octree[i].b_tot = 0;
+		octree[i].count = 0;
+	}
+}

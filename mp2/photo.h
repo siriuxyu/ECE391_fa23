@@ -83,6 +83,15 @@ extern image_t* read_obj_image (const char* fname);
 /* Read room photo from a file into a dynamically allocated structure. */
 extern photo_t* read_photo (const char* fname);
 
+typedef struct octnode_t {
+	uint16_t idx;
+	uint32_t r_tot, g_tot, b_tot;
+    uint32_t count;	                // calculate average and sort
+} octnode_t;
+
+
+
+
 /* 
  * N.B.  I'm aware that Valgrind and similar tools will report the fact that
  * I chose not to bother freeing image data before terminating the program.
