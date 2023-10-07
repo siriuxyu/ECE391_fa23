@@ -595,7 +595,11 @@ read_photo (const char* fname)
 			p->palette[i+128][1] = le2_tree[i].g_tot / le2_tree[i].count;
 			p->palette[i+128][2] = le2_tree[i].b_tot / le2_tree[i].count;
 		}
-
+		else {
+			p->palette[i+128][0] = r2 >> 6;
+			p->palette[i+128][1] = g2 >> 2;
+			p->palette[i+128][2] = b2 << 2;
+		}
 	}
 
 	for (y=0; y < p->hdr.height; y++) {
