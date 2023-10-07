@@ -500,7 +500,7 @@ read_photo (const char* fname)
 			free (p);
 				(void)fclose (in);
 			return NULL;
-
+			}
 			int pixel_idx = y*p->hdr.width + x;
 			int r = ((pixel >> 11) & 0x1F) <<1;		// RGB[15:11] AND 00011111
 			int g = (pixel >> 5) & 0x3F;			// RGB[10:5]  AND 00111111
@@ -532,7 +532,7 @@ read_photo (const char* fname)
 		//    p->img[p->hdr.width * y + x] = (((pixel >> 14) << 4) |
 		// 				    (((pixel >> 9) & 0x3) << 2) |
 		// 				    ((pixel >> 3) & 0x3));
-			}
+
 		}
 	}
 	qsort(le4_tree, 4096, sizeof(octnode_t), compare);	// sort the octree
