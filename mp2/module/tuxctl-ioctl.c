@@ -28,8 +28,38 @@
 
 #define debug(str, ...) \
 	printk(KERN_DEBUG "%s: " str, __FUNCTION__, ## __VA_ARGS__)
+	
 
 /************************ Protocol Implementation *************************/
+
+static bool ack_flag = 0;
+static spinlock_t lock;
+static unsigned char LED_pattern[4];
+static unsigned char buttons;
+static unsigned long EFLAGS;
+
+
+static char number_table[16] {
+	0xE7, 			// 0
+	0x06, 			// 1
+	0xCB, 			// 2
+	0x8F, 			// 3
+	0x2E, 			// 4
+	0xAD, 			// 5
+	0xED, 			// 6
+	0x86, 			// 7
+	0xEF, 			// 8
+	0xAE, 			// 9
+
+	0xEE, 			// A
+	0x6D, 			// B
+	0xE1, 			// C
+	0x4F, 			// D
+	0xE9, 			// E
+	0xE8 			// F
+}
+
+
 
 /* tuxctl_handle_packet()
  * IMPORTANT : Read the header for tuxctl_ldisc_data_callback() in 
@@ -44,8 +74,69 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
     b = packet[1]; /* values when printing them. */
     c = packet[2];
 
+	switch (a)
+	{
+		case MTCP_ACK:			
+	    	tuxctl_ack();
+		case MTCP_BIOC_EVENT:
+			tuxctl_bioc_event(b, c);
+		case MTCP_RESET:
+			tuxctl_reset(b, c);
+	
+		default:
+			return;
+	}
+
     /*printk("packet : %x %x %x\n", a, b, c); */
 }
+
+void tuxctl_ack()
+{
+	ack_flag = 1;
+}
+
+
+void tuxctl_bioc_event(unsigned arg1, unsigned arg2)
+{
+	spin_lock_irqsave(&lock, EFLAGS);
+
+	buttons = 0;
+	buttons |= arg1 & 0x0F;
+	buttons |= (arg2 & 0x01) << 4;
+	buttons |= (arg2 & 0x02) << 5;
+	buttons |= (arg2 & 0x04) << 3;
+	buttons |= (arg2 & 0x08) << 4;
+
+	spin_unlock_irqrestore(&lock, EFLAGS);
+}
+
+
+void tuxctl_reset(tty_struct* tty)
+{
+	unsigned char packet[8];
+
+	packet[0] = MTCP_BIOC_ON;
+	packet[1] = MTCP_LED_USR;
+	packet[2] = MTCP_LED_SET;
+	packet[3] = 0x0F;
+
+	int idx;
+	for (idx = 4; idx < 8; idx++) {
+		packet[idx] = 0x00;
+		LED_pattern[idx - 4] = 0x00;
+	}
+
+	if (ack_flag) {
+		tuxctl_ldisc_put(tty, packet, 8);
+		ack_flag = 0;
+	} else {
+		return;
+	}
+ 
+}
+
+
+
 
 /******** IMPORTANT NOTE: READ THIS BEFORE IMPLEMENTING THE IOCTLS ************
  *                                                                            *
@@ -60,14 +151,92 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
  * valid.                                                                     *
  *                                                                            *
  ******************************************************************************/
+
+int32_t process_button() {
+	int32_t button = 0;
+	spin_lock_irqsave(&lock, EFLAGS);
+	button = buttons;
+	spin_unlock_irqrestore(&lock, EFLAGS);
+	return button;
+}
+
+int tuxctl_init(struct tty_struct* tty)
+{
+	if (!ack_flag) {
+		return 0;
+	}
+
+	unsigned char packet[4];
+	packet[0] = MTCP_BIOC_ON;
+	packet[1] = MTCP_LED_USR;
+	packet[2] = MTCP_LED_SET;
+	packet[3] = 0x00;
+	tuxctl_ldisc_put(tty, packet, 4);
+	ack_flag = 0;
+	buttons = 0xFF;
+	lock = SPIN_LOCK_UNLOCKED;
+
+	return 0;
+}
+
+
+int tuxctl_buttons(int32_t* ptr)
+{
+	if (ptr == NULL){
+		return -EINVAL;
+	}
+
+	spin_lock_irqsave(&lock, EFLAGS);
+	*ptr = buttons;
+	spin_unlock_irqrestore(&lock, EFLAGS);
+
+	return 0;
+}
+
+
+int tuxctl_set_LED(struct tty_struct* tty, int32_t arg)
+{
+	if (arg < 0 || arg > 0xFFFFFFFF){
+		return -EINVAL;
+	}
+
+	int i;
+	int curr_num;
+	int curr_loc;
+	int curr_dec;
+	unsigned char packet[6];
+	for (i = 0; i < 4; i++){					// loop each LED
+		curr_num = (arg >> (i * 4)) & 0x0F;
+		curr_loc = (arg >> (i + 16)) & 0x01;
+		curr_dec = (arg >> (i + 24)) & 0x01;
+		LED_pattern[i] = number_table[curr_num];
+		if (curr_loc == 1) {					// if the LED is on			
+			packet[i + 2] = number_table[curr_num];
+			if (curr_dec == 1) {				// if the decimal point is on
+				packet[i + 2] |= 0x10;
+			}
+		}
+	}
+	packet[0] = MTCP_LED_SET;
+	packet[1] = 0x0F;
+	tuxctl_ldisc_put(tty, packet, 6);
+	ack_flag = 0;
+
+	// send the LED pattern to the tux
+
+	return 0;		// always return 0
+}
+
+
+
 int 
 tuxctl_ioctl (struct tty_struct* tty, struct file* file, 
 	      unsigned cmd, unsigned long arg)
 {
     switch (cmd) {
-	case TUX_INIT:
-	case TUX_BUTTONS:
-	case TUX_SET_LED:
+	case TUX_INIT:			return tuxctl_init(tty);
+	case TUX_BUTTONS:		return tuxctl_buttons(&arg);
+	case TUX_SET_LED:		return tuxctl_set_LED(arg);
 	case TUX_LED_ACK:
 	case TUX_LED_REQUEST:
 	case TUX_READ_LED:
@@ -75,4 +244,5 @@ tuxctl_ioctl (struct tty_struct* tty, struct file* file,
 	    return -EINVAL;
     }
 }
+
 

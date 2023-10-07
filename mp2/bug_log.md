@@ -71,3 +71,56 @@
             char[41] new_bar;
             new_bar[40] = '\0';
             ... // copy other things into new_bar
+
+ ------
+
+
+# Bug Log for MP2.2
+
+## Bug01
+- __Problem__
+  - Some black holes on my image
+
+
+- __Reason__
+  - Forgot to initiallize discovered[4096]
+
+
+- __Method Used to Fix__
+  - Initiallize all elements to 0 (as not discovered in level4)
+
+
+
+
+
+
+## Bug02
+- __Problem__
+
+
+
+- __Reason__
+
+
+
+- __Method Used to Fix__
+
+
+
+
+
+
+
+
+
+
+## Bug03
+- __Problem__
+
+
+
+- __Reason__
+
+
+
+- __Method Used to Fix__
