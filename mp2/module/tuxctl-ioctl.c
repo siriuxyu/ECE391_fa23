@@ -32,7 +32,7 @@
 
 /************************ Protocol Implementation *************************/
 
-static bool ack_flag = 0;
+static bool ack_flag;
 static spinlock_t lock;
 static unsigned char LED_pattern[4];
 static unsigned char buttons;
