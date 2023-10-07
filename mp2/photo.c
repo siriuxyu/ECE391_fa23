@@ -87,34 +87,6 @@ struct image_t {
 static const room_t* cur_room = NULL; 
 
 
-// /* macro used to write a byte to a port */
-// #define OUTB(port,val)                                                  \
-// do {                                                                    \
-//     asm volatile ("                                                     \
-//         outb %b1,(%w0)                                                  \
-//     " : /* no outputs */                                                \
-//       : "d" ((port)), "a" ((val))                                       \
-//       : "memory", "cc");                                                \
-// } while (0)
-
-
-// /* 
-//  * macro used to write an array of one-byte values to two consecutive ports 
-//  */
-// #define REP_OUTSB(port,source,count)                                    \
-// do {                                                                    \
-//     asm volatile ("                                                     \
-//      1: movb 0(%1),%%al                                                ;\
-// 	outb %%al,(%w2)                                                ;\
-// 	incl %1                                                        ;\
-// 	decl %0                                                        ;\
-// 	jne 1b                                                          \
-//     " : /* no outputs */                                                \
-//       : "c" ((count)), "S" ((source)), "d" ((port))                     \
-//       : "eax", "memory", "cc");                                         \
-// } while (0)
-
-
 /* 
  * fill_horiz_buffer
  *   DESCRIPTION: Given the (x,y) map pixel coordinate of the leftmost 
