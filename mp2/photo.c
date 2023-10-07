@@ -485,6 +485,11 @@ read_photo (const char* fname)
 	init_octree(le4_tree);
 	init_level2_octree(le2_tree);
 
+	int k;
+	for (k = 0; k < 4096; k++) {
+		discovered[k] = 0;
+	}
+
     /* 
      * Loop over rows from bottom to top.  Note that the file is stored
      * in this order, whereas in memory we store the data in the reverse
