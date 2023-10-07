@@ -479,7 +479,7 @@ read_photo (const char* fname)
 
 	octnode_t le4_tree[4096];		// 4096 = 8^4, 4 levels of octree
 	octnode_t le2_tree[64];			// 64 = 8^2, 2nd level of octree
-	init_octree(new_tree);
+	init_octree(le4_tree);
 	init_level2_octree(le2_tree);
 
     /* 
@@ -556,7 +556,7 @@ read_photo (const char* fname)
 		for (x=0; x < p->hdr.width; x++) {
 			int pixel_idx = y*p->hdr.width + x;
 			int node4_idx = mapping[pixel_idx];
-			if (ranking(node4_idx) < 128) {
+			if (ranking[node4_idx] < 128) {
 				p->img[pixel_idx] = ranking[node4_idx] + 64;	// map the index from 64 to 192-1
 			}
 		}
