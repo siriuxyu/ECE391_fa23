@@ -573,7 +573,7 @@ read_photo (const char* fname)
 			int r4 = ((j >> 4) & 0x03) << 8;
 			int g4 = ((j >> 2) & 0x03) << 4;
 			int b4 = (j & 0x03);
-			int level4_idx = r2 | g2 | b2 | r4 | g4 | b4;
+			int level4_idx = r2 | r4 | g2 | g4 | b2 | b4;
 			int new_idx = ranking[level4_idx];
 			if (discovered[level4_idx] != 1) {
 				// le2_tree[i].r_tot += new_tree[level4_idx].r_tot / new_tree[level4_idx].count;
@@ -603,9 +603,9 @@ read_photo (const char* fname)
 
 
 
-		OUTB (0x03C8, 0x40);				// 0x40 = 64
+		// OUTB (0x03C8, 0x40);				// 0x40 = 64
 		/* Write 192 colors */
-		REP_OUTSB (0x03C9, p->palette, 192 * 3);
+		// REP_OUTSB (0x03C9, p->palette, 192 * 3);
     /* All done.  Return success. */
     (void)fclose (in);
     return p;
