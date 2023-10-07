@@ -513,7 +513,7 @@ read_photo (const char* fname)
 			le4_tree[node4_idx].b_tot += b;
 			le4_tree[node4_idx].count++;				// increment count
 
-			ranking[pixel_idx] = node4_idx;				// map the index
+			mapping[pixel_idx] = node4_idx;				// map the index
 
 			/* 
 			* 16-bit pixel is coded as 5:6:5 RGB (5 bits red, 6 bits green,
@@ -605,7 +605,7 @@ read_photo (const char* fname)
 		OUTB (0x03C8, 0x40);				// 0x40 = 64
 		/* Write 192 colors */
 		REP_OUTSB (0x03C9, p->palette, 192 * 3);
-		
+
     /* All done.  Return success. */
     (void)fclose (in);
     return p;
