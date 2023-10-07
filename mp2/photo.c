@@ -619,3 +619,5 @@ void init_level2_octree (octnode_t* octree) {
 		octree[i].count = 0;
 	}
 }
+
+
