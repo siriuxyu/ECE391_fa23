@@ -602,11 +602,10 @@ read_photo (const char* fname)
 		}
 	}
 
-
-
-		// OUTB (0x03C8, 0x40);				// 0x40 = 64
+		OUTB (0x03C8, 0x40);				// 0x40 = 64
 		/* Write 192 colors */
-		// REP_OUTSB (0x03C9, p->palette, 192 * 3);
+		REP_OUTSB (0x03C9, p->palette, 192 * 3);
+		
     /* All done.  Return success. */
     (void)fclose (in);
     return p;
