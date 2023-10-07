@@ -587,9 +587,11 @@ read_photo (const char* fname)
 				le2_tree[i].count += le4_tree[new_idx].count;
 			}
 		}
-		p->palette[i+128][0] = le2_tree[i].r_tot / le2_tree[i].count;
-		p->palette[i+128][1] = le2_tree[i].g_tot / le2_tree[i].count;
-		p->palette[i+128][2] = le2_tree[i].b_tot / le2_tree[i].count;
+		if (le2_tree[i].count != 0) {
+			p->palette[i+128][0] = le2_tree[i].r_tot / le2_tree[i].count;
+			p->palette[i+128][1] = le2_tree[i].g_tot / le2_tree[i].count;
+			p->palette[i+128][2] = le2_tree[i].b_tot / le2_tree[i].count;
+		}
 
 	}
 
