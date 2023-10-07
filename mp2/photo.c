@@ -348,7 +348,7 @@ prep_room (const room_t* r)
     cur_room = r;
 	OUTB (0x03C8, 0x40);				// 0x40 = 64
 	// /* Write 192 colors */
-	REP_OUTSB (0x03C9, r->view->palette, 192 * 3);
+	REP_OUTSB (0x03C9, room_photo(r)->palette, 192 * 3);
 }
 
 
