@@ -11,14 +11,14 @@
 #define TUX_LED_ACK _IO('E', 0x15)
 
 
-// void tuxctl_ack(void);
-// void tuxctl_bioc_event(unsigned arg1, unsigned arg2);
-// void tuxctl_reset(struct tty_struct* tty);
+void tuxctl_ack(void);
+void tuxctl_bioc_event(unsigned arg1, unsigned arg2);
+void tuxctl_reset(struct tty_struct* tty);
 
 
-// int tuxctl_init(struct tty_struct* tty);
-// int tuxctl_buttons(unsigned long* ptr);
-// int tuxctl_set_LED(struct tty_struct* tty, int32_t arg);
+int tuxctl_init(struct tty_struct* tty);
+int tuxctl_buttons(unsigned long* ptr);
+int tuxctl_set_LED(struct tty_struct* tty, int32_t arg);
 
 
 
