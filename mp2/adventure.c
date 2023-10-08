@@ -149,6 +149,7 @@ static int time_is_after (struct timeval* t1, struct timeval* t2);
 /* file-scope variables */
 
 static game_info_t game_info; /* game information */
+static int32_t enter_room;	/* player has entered a new room */
 
 
 /* 
@@ -233,7 +234,7 @@ game_loop ()
 
     struct timeval cur_time; /* current time (during tick)      */
     cmd_t cmd;               /* command issued by input control */
-    int32_t enter_room;      /* player has changed rooms        */
+    // int32_t enter_room;      /* player has changed rooms        */
 
     /* Record the starting time--assume success. */
     (void)gettimeofday (&start_time, NULL);

@@ -236,7 +236,7 @@ int tuxctl_buttons(unsigned long* ptr)
 
 	spin_lock_irqsave(&button_lock, EFLAGS);
 	// *ptr = buttons;
-	copy_to_user(ptr, &buttons, sizeof(int32_t));
+	copy_to_user((int32_t*)ptr, &buttons, sizeof(int32_t));
 	spin_unlock_irqrestore(&button_lock, EFLAGS);
 
 	return 0;
