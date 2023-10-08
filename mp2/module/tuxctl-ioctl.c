@@ -142,12 +142,12 @@ void tuxctl_bioc_event(unsigned arg1, unsigned arg2)
 
 void tuxctl_reset(struct tty_struct* tty)
 {
-	unsigned char packet[8];				// 8 bytes of the packet
+	unsigned char packet[8] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x0F, 0, 0, 0, 0};				// 8 bytes of the packet
 
-	packet[0] = MTCP_BIOC_ON;
-	packet[1] = MTCP_LED_USR;
-	packet[2] = MTCP_LED_SET;
-	packet[3] = 0x0F;
+	// packet[0] = MTCP_BIOC_ON;
+	// packet[1] = MTCP_LED_USR;
+	// packet[2] = MTCP_LED_SET;
+	// packet[3] = 0x0F;
 
 	int idx;
 	for (idx = 4; idx < 8; idx++) {
