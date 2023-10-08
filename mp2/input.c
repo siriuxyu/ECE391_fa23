@@ -50,12 +50,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/io.h>
+#include <sys/ioctl.h>
 #include <termio.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "assert.h"
 #include "input.h"
+#include "module/tuxctl-ioctl.h"
 
 /* set to 1 and compile this file by itself to test functionality */
 #define TEST_INPUT_DRIVER 1
