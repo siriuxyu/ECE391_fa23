@@ -180,7 +180,7 @@ static pthread_cond_t  tux_cv = PTHREAD_COND_INITIALIZER;
 // static pthread_cond_t  cmd_cv = PTHREAD_COND_INITIALIZER;
 
 static cmd_t tux_cmd = CMD_NONE;
-static bool tux_flag = 0;
+static int tux_flag = 0;
 
 
 
@@ -209,7 +209,7 @@ cancel_status_thread (void* ignore)
  * RETURN VALUE: none
  * SIDE EFFECTS: none
  */
-cancel_tux_thread (void* ignore)
+void cancel_tux_thread (void* ignore)
 {
 	(void)pthread_cancel (tux_thread_id);
 }
