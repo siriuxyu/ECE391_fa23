@@ -58,10 +58,10 @@
 #include "input.h"
 
 /* set to 1 and compile this file by itself to test functionality */
-#define TEST_INPUT_DRIVER 0
+#define TEST_INPUT_DRIVER 1
 
 /* set to 1 to use tux controller; otherwise, uses keyboard input */
-#define USE_TUX_CONTROLLER 0
+#define USE_TUX_CONTROLLER 1
 
 
 /* stores original terminal settings */
@@ -374,6 +374,7 @@ void test_convert_time(int min, int sec) {
 int
 main ()
 {
+	
     cmd_t last_cmd = CMD_NONE;
     cmd_t cmd;
     static const char* const cmd_name[NUM_COMMANDS] = {
@@ -386,18 +387,50 @@ main ()
 	perror ("ioperm");
 	return 3;
     }
+	time_t start_time = clock();
+	int i = 0;
 
     init_input ();
+	#if (USE_TUX_CONTROLLER == 0)
+		printf("Error! : Not using tux!\n");
+	
     while (1) {
         while ((cmd = get_command ()) == last_cmd);
 	last_cmd = cmd;
 	printf ("command issued: %s\n", cmd_name[cmd]);
 	if (cmd == CMD_QUIT)
 	    break;
-	display_time_on_tux (83);
+	// display_time_on_tux (83);
     }
+	#else
+	// test input from tux
+	while (1) {
+        while ((cmd = get_tux_command()) == last_cmd);
+		last_cmd = cmd;
+	}
+	printf ("command issued: %s\n", cmd_name[cmd]);
+	
+	// test LED
+	test_convert_time(12, 34);
+	sleep(1);
+	test_convert_time(0, 0);
+	sleep(1);
+	test_convert_time(60, 10);
+	sleep(1);
+	// test_convert_time(99, 59);
+	// sleep(1);
+	test_convert_time(255, 255);
+	sleep(1);
+
+	while (i < 100) {
+		display_time_on_tux(i++);
+		sleep(0.5);
+	}
+
+	// display_time_on_tux (83);
     shutdown_input ();
     return 0;
+	#endif
 }
 #endif
 
