@@ -170,6 +170,18 @@ static pthread_mutex_t msg_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  msg_cv = PTHREAD_COND_INITIALIZER;
 static char status_msg[STATUS_MSG_LEN + 1] = {'\0'};
 
+static pthread_t tux_thread_id;
+static pthread_mutex_t tux_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  tux_cv = PTHREAD_COND_INITIALIZER;
+
+// static pthread_t cmd_thread_id;
+// static pthread_mutex_t cmd_lock = PTHREAD_MUTEX_INITIALIZER;
+// static pthread_cond_t  cmd_cv = PTHREAD_COND_INITIALIZER;
+
+static cmd_t tux_cmd = CMD_NONE;
+static bool tux_flag = 0;
+
+
 
 /* 
  * cancel_status_thread
@@ -184,6 +196,21 @@ static void
 cancel_status_thread (void* ignore)
 {
     (void)pthread_cancel (status_thread_id);
+}
+
+
+/*
+ * cancel_tux_thread
+ *   DESCRIPTION: Terminates the tux helper thread.  Used as
+ * 			  a cleanup method to ensure proper shutdown.
+ *  INPUTS: none (ignored)
+ * OUTPUTS: none
+ * RETURN VALUE: none
+ * SIDE EFFECTS: none
+ */
+cancel_tux_thread (void* ignore)
+{
+	(void)pthread_cancel (tux_thread_id);
 }
 
 
@@ -333,6 +360,7 @@ game_loop ()
 		tick_time.tv_usec -= 1000000;
 	    }
 	} while (time_is_after (&cur_time, &tick_time));
+	display_time_on_tux(tick_time.tv_sec - start_time.tv_sec);
 
 	/*
 	 * Handle asynchronous events.  These events use real time rather
@@ -346,6 +374,15 @@ game_loop ()
 	 * Note that typed commands that move objects may cause the room
 	 * to be redrawn.
 	 */
+
+	// @@ Checkpoint 2
+	pthread_mutex_lock(&tux_lock);
+	tux_cmd = get_tux_command();
+	if (CMD_NONE != tux_cmd) {
+		tux_flag = 1;
+		pthread_cond_signal(&tux_cv);
+	}
+	pthread_mutex_unlock(&tux_lock);
 	
 	cmd = get_command ();
 	switch (cmd) {
@@ -738,6 +775,52 @@ status_thread (void* ignore)
     return NULL;
 }
 
+/*
+ * tux_thread
+ *   DESCRIPTION: Function executed by tux helper thread.
+ * 				  Waits for a command to be received, then executes the
+ * 				  command.
+ *   INPUTS: none (ignored)
+ *   OUTPUTS: none
+ *   RETURN VALUE: NULL
+ *   SIDE EFFECTS: Changes the tux_flag to 0 after executing the command.
+ */
+static void* tux_thread(void* ignore) {
+	while (1) {
+		pthread_mutex_lock(&tux_lock);
+		while (!tux_flag) {
+			pthread_cond_wait(&tux_cv, &tux_lock);
+		}
+		switch (tux_cmd)
+		{
+		case CMD_UP:	move_photo_down();	break;
+		case CMD_DOWN:	move_photo_up();	break;
+		case CMD_LEFT:	move_photo_right();	break;
+		case CMD_RIGHT:	move_photo_left();	break;
+
+		case CMD_MOVE_LEFT:
+			enter_room = (TC_CHANGE_ROOM ==
+				try_to_move_left(&game_info.where));
+			break;
+		
+		case CMD_MOVE_RIGHT:
+			enter_room = (TC_CHANGE_ROOM ==
+				try_to_move_right(&game_info.where));
+			break;
+		
+		case CMD_ENTER:
+			enter_room = (TC_CHANGE_ROOM ==
+				try_to_enter(&game_info.where));
+			break;
+		
+		default:
+			break;
+		}
+		tux_flag = 0;
+		pthread_mutex_unlock(&tux_lock);
+	}
+	return NULL;
+}
 
 /* 
  * time_is_after 
@@ -822,6 +905,12 @@ main ()
     }
     push_cleanup (cancel_status_thread, NULL); {
 
+	/* @@ Checkpoint 2 */
+	if (0 != pthread_create(&tux_thread_id, NULL, tux_thread, NULL)) {
+		PANIC("failed to create tux thread");
+	}
+	push_cleanup(cancel_tux_thread, NULL); {
+
 	/* Start mode X. */
 	if (0 != set_mode_X (fill_horiz_buffer, fill_vert_buffer)) {
 	    PANIC ("cannot initialize mode X");
@@ -841,6 +930,8 @@ main ()
 	} pop_cleanup (1);
 
     } pop_cleanup (1);
+
+	} pop_cleanup (1);
 
     /* Print a message about the outcome. */
     switch (game) {

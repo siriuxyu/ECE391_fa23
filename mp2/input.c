@@ -67,6 +67,9 @@
 /* stores original terminal settings */
 static struct termios tio_orig;
 
+/* file descriptor for tux controller */
+static int fd;
+
 
 /* 
  * init_input
@@ -115,6 +118,16 @@ init_input ()
 	perror ("tcsetattr to set stdin terminal settings");
 	return -1;
     }
+
+	fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
+	if (fd == -1) {
+		perror("open failed");
+		// exit(1);
+	}
+
+	int ldisc_num = N_MOUSE;
+	ioctl(fd, TIOCSETD, &ldisc_num);
+	ioctl(fd, TUX_INIT, 0);
 
     /* Return success. */
     return 0;
@@ -280,6 +293,8 @@ get_command ()
     return pushed;
 }
 
+
+
 /* 
  * shutdown_input
  *   DESCRIPTION: Cleans up state associated with input control.  Restores
@@ -295,6 +310,32 @@ shutdown_input ()
     (void)tcsetattr (fileno (stdin), TCSANOW, &tio_orig);
 }
 
+// @@ Checkpoint2
+/* 
+ * get_tux_command
+ *   DESCRIPTION: Reads a command from the tux controller.  
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: command issued by the tux controller
+ *   SIDE EFFECTS: none
+ */
+cmd_t get_tux_command() {
+	int buttons_status;
+	ioctl(fd, TUX_BUTTONS, &buttons_status);
+	switch (buttons_status)				// r | l | d | u | C | B | A | S
+	{
+	case 0x7F:	return CMD_RIGHT;	
+	case 0xBF:	return CMD_LEFT;
+	case 0xDF:	return CMD_DOWN;
+	case 0xEF:	return CMD_UP;
+	case 0xF7:	return CMD_MOVE_RIGHT;
+	case 0xFD:	return CMD_MOVE_LEFT;
+	case 0xFB:	return CMD_ENTER;
+
+	default:	return CMD_NONE;
+	}
+}
+
 
 /* 
  * display_time_on_tux
@@ -305,12 +346,27 @@ shutdown_input ()
  *   RETURN VALUE: none 
  *   SIDE EFFECTS: changes state of controller's display
  */
+
 void
 display_time_on_tux (int num_seconds)
 {
-#if (USE_TUX_CONTROLLER != 0)
-#error "Tux controller code is not operational yet."
-#endif
+// #if (USE_TUX_CONTROLLER != 0)
+// #error "Tux controller code is not operational yet."
+// #endif
+	int min = num_seconds / 60;
+	int sec = num_seconds % 60;
+	int disp_min = (min / 10) << 4 | (min % 10);
+	int disp_sec = (sec / 10) << 4 | (sec % 10);
+	int disp_time = disp_min << 8 | disp_sec | 0x040F0000;
+	ioctl(fd, TUX_SET_LED, disp_time);
+}
+
+
+/* ----------------------------test zone below----------------------------*/
+
+void test_convert_time(int min, int sec) {
+	int disp_sec = min * 60 + sec;
+	display_time_on_tux(disp_sec);
 }
 
 

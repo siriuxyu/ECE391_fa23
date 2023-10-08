@@ -32,8 +32,8 @@
 
 /************************ Protocol Implementation *************************/
 
-static bool ack_flag;
-static spinlock_t lock;
+static bool ack_flag;		// 1 = ack, 0 = not ack
+static spinlock_t button_lock;
 static unsigned char LED_pattern[4];
 static unsigned char buttons;
 static unsigned long EFLAGS;
@@ -117,16 +117,16 @@ void tuxctl_ack()
 
 void tuxctl_bioc_event(unsigned arg1, unsigned arg2)
 {
-	spin_lock_irqsave(&lock, EFLAGS);
+	spin_lock_irqsave(&button_lock, EFLAGS);
 
 	buttons = 0;
 	buttons |= arg1 & 0x0F;
-	buttons |= (arg2 & 0x01) << 4;		// right | left | down | up
+	buttons |= (arg2 & 0x01) << 4;		// right | left | down | up | C | B | A | start
 	buttons |= (arg2 & 0x02) << 5;
 	buttons |= (arg2 & 0x04) << 3;
 	buttons |= (arg2 & 0x08) << 4;
 
-	spin_unlock_irqrestore(&lock, EFLAGS);
+	spin_unlock_irqrestore(&button_lock, EFLAGS);
 }
 
 
@@ -155,13 +155,9 @@ void tuxctl_reset(tty_struct* tty)
 		LED_pattern[idx - 4] = 0x00;		// reset the LED to 0
 	}
 
-	if (ack_flag) {
-		tuxctl_ldisc_put(tty, packet, 8);
-		ack_flag = 0;
-	} else {
-		return;
-	}
- 
+	tuxctl_ldisc_put(tty, packet, 8);
+	ack_flag = 0;
+	buttons = 0xFF;
 }
 
 
@@ -189,14 +185,14 @@ void tuxctl_reset(tty_struct* tty)
  *   RETURN VALUE: 0
  *   SIDE EFFECTS: initialize the tux controller
 */
+
 int32_t process_button() {
 	int32_t button = 0;
-	spin_lock_irqsave(&lock, EFLAGS);
+	spin_lock_irqsave(&button_lock, EFLAGS);
 	button = buttons;
-	spin_unlock_irqrestore(&lock, EFLAGS);
+	spin_unlock_irqrestore(&button_lock, EFLAGS);
 	return button;
 }
-
 
 /*
  * tuxctl_init()
@@ -216,11 +212,11 @@ int tuxctl_init(struct tty_struct* tty)
 	packet[0] = MTCP_BIOC_ON;
 	packet[1] = MTCP_LED_USR;
 	packet[2] = MTCP_LED_SET;
-	packet[3] = 0x00;
+	packet[3] = 0x00;			// set all LED to 0
 	tuxctl_ldisc_put(tty, packet, 4);
 	ack_flag = 0;
 	buttons = 0xFF;
-	lock = SPIN_LOCK_UNLOCKED;
+	button_lock = SPIN_LOCK_UNLOCKED;
 
 	return 0;
 }
@@ -239,9 +235,10 @@ int tuxctl_buttons(int32_t* ptr)
 		return -EINVAL;
 	}
 
-	spin_lock_irqsave(&lock, EFLAGS);
-	*ptr = buttons;
-	spin_unlock_irqrestore(&lock, EFLAGS);
+	spin_lock_irqsave(&button_lock, EFLAGS);
+	// *ptr = buttons;
+	copy_to_user(ptr, &buttons, sizeof(int32_t));
+	spin_unlock_irqrestore(&button_lock, EFLAGS);
 
 	return 0;
 }
@@ -308,9 +305,9 @@ tuxctl_ioctl (struct tty_struct* tty, struct file* file,
 	case TUX_INIT:			return tuxctl_init(tty);
 	case TUX_BUTTONS:		return tuxctl_buttons(&arg);
 	case TUX_SET_LED:		return tuxctl_set_LED(arg);
-	case TUX_LED_ACK:
-	case TUX_LED_REQUEST:
-	case TUX_READ_LED:
+	case TUX_LED_ACK:		break;
+	case TUX_LED_REQUEST:	break;
+	case TUX_READ_LED:		break;
 	default:
 	    return -EINVAL;
     }
