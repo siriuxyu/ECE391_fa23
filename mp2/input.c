@@ -407,26 +407,32 @@ main ()
     }
 	#else
 	// test input from tux
-	while (1) {
-        while ((cmd = get_tux_command()) == last_cmd);
-		last_cmd = cmd;
-	}
-	printf ("command issued: %s\n", cmd_name[cmd]);
+	// while (1) {
+    //     while ((cmd = get_tux_command()) == last_cmd);
+	// 	last_cmd = cmd;
+	// 	printk ("command issued: %s\n", cmd_name[cmd]);
+	// }
 	
 	// test LED
 	test_convert_time(12, 34);
+	printk ("time 12:34\n");
 	sleep(1);
 	test_convert_time(0, 0);
+	printk ("time 00:00\n");
 	sleep(1);
 	test_convert_time(60, 10);
+	printk ("time 60:10\n");
 	sleep(1);
 	// test_convert_time(99, 59);
+	// printk ("time 99:59\n");
 	// sleep(1);
 	test_convert_time(255, 255);
+	printk ("time 255:255\n");
 	sleep(1);
 
 	while (i < 3602) {
 		display_time_on_tux(i++);
+		printk ("time %d:%d\n", i / 60, i % 60);
 		sleep(0.5);
 	}
 

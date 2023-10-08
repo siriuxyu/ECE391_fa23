@@ -139,7 +139,6 @@ void tuxctl_bioc_event(unsigned arg1, unsigned arg2)
  *   RETURN VALUE: none
  *   SIDE EFFECTS: reset the tux controller
 */
-
 void tuxctl_reset(struct tty_struct* tty)
 {
 	unsigned char packet[8] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x0F, 0, 0, 0, 0};				// 8 bytes of the packet
@@ -176,14 +175,6 @@ void tuxctl_reset(struct tty_struct* tty)
  *                                                                            *
  ******************************************************************************/
 
-/*
- * tuxctl_init()
- *   DESCRIPTION: Initialize the tux controller
- *   INPUTS: tty -- the tty_struct of the tux controller
- *   OUTPUTS: none
- *   RETURN VALUE: 0
- *   SIDE EFFECTS: initialize the tux controller
-*/
 
 // int32_t process_button(void) {
 // 	int32_t button = 0;
