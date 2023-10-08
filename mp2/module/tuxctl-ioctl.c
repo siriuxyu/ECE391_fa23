@@ -140,7 +140,7 @@ void tuxctl_bioc_event(unsigned arg1, unsigned arg2)
  *   SIDE EFFECTS: reset the tux controller
 */
 
-void tuxctl_reset(tty_struct* tty)
+void tuxctl_reset(struct tty_struct* tty)
 {
 	unsigned char packet[8];				// 8 bytes of the packet
 
