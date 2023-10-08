@@ -41,6 +41,7 @@ static unsigned long EFLAGS;
 // 7-segment display number table
 static char number_table[16] = {
 	0xE7, 			// 0
+	0x06, 			// 1
 	0xCB, 			// 2
 	0x8F, 			// 3
 	0x2E, 			// 4
