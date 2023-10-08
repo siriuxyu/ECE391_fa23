@@ -56,7 +56,7 @@ static char number_table[16] {
 	0x4F, 			// D
 	0xE9, 			// E
 	0xE8 			// F
-}
+};
 
 
 
@@ -228,7 +228,7 @@ int tuxctl_init(struct tty_struct* tty)
  *   RETURN VALUE: 0 if success, -EINVAL if ptr is NULL
  *   SIDE EFFECTS: none
 */
-int tuxctl_buttons(int32_t* ptr)
+int tuxctl_buttons(unsigned long* ptr)
 {
 	if (ptr == NULL){
 		return -EINVAL;
@@ -303,7 +303,7 @@ tuxctl_ioctl (struct tty_struct* tty, struct file* file,
     switch (cmd) {
 	case TUX_INIT:			return tuxctl_init(tty);
 	case TUX_BUTTONS:		return tuxctl_buttons(&arg);
-	case TUX_SET_LED:		return tuxctl_set_LED(arg);
+	case TUX_SET_LED:		return tuxctl_set_LED(tty, arg);
 	case TUX_LED_ACK:		break;
 	case TUX_LED_REQUEST:	break;
 	case TUX_READ_LED:		break;
