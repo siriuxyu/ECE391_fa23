@@ -422,7 +422,7 @@ main ()
 	test_convert_time(255, 255);
 	sleep(1);
 
-	while (i < 100) {
+	while (i < 3602) {
 		display_time_on_tux(i++);
 		sleep(0.5);
 	}

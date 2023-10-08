@@ -151,8 +151,7 @@ void tuxctl_reset(tty_struct* tty)
 
 	int idx;
 	for (idx = 4; idx < 8; idx++) {
-		packet[idx] = 0x00;
-		LED_pattern[idx - 4] = 0x00;		// reset the LED to 0
+		packet[idx] = LED_pattern[idx - 4];
 	}
 
 	tuxctl_ldisc_put(tty, packet, 8);
