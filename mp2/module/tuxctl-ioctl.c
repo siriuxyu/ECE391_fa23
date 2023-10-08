@@ -203,11 +203,11 @@ void tuxctl_reset(struct tty_struct* tty)
 */
 int tuxctl_init(struct tty_struct* tty)
 {
+	unsigned char packet[4] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x00};
 	if (!ack_flag) {
 		return 0;
 	}
 
-	unsigned char packet[4] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x00};
 	// packet[0] = MTCP_BIOC_ON;
 	// packet[1] = MTCP_LED_USR;
 	// packet[2] = MTCP_LED_SET;
@@ -253,15 +253,17 @@ int tuxctl_buttons(unsigned long* ptr)
 */
 int tuxctl_set_LED(struct tty_struct* tty, int32_t arg)
 {
+	unsigned char packet[6] = {0, 0, 0, 0, 0, 0};
+	int i;
+	int curr_num;
+	int curr_loc;
+	int curr_dec;
+
+
 	if (arg < 0 || arg > 0xFFFFFFFF){
 		return -EINVAL;
 	}
 
-	int i = 0;
-	int curr_num = 0;
-	int curr_loc = 0;
-	int curr_dec = 0;
-	unsigned char packet[6] = {0, 0, 0, 0, 0, 0};
 	for (i = 0; i < 4; i++){					// loop each LED
 		curr_num = (arg >> (i * 4)) & 0x0F;
 		curr_loc = (arg >> (i + 16)) & 0x01;
