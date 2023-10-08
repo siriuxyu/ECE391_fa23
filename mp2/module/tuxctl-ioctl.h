@@ -11,7 +11,7 @@
 #define TUX_LED_ACK _IO('E', 0x15)
 
 
-void tuxctl_ack();
+void tuxctl_ack(void);
 void tuxctl_bioc_event(unsigned arg1, unsigned arg2);
 void tuxctl_reset(struct tty_struct* tty);
 

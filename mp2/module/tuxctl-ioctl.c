@@ -185,13 +185,13 @@ void tuxctl_reset(struct tty_struct* tty)
  *   SIDE EFFECTS: initialize the tux controller
 */
 
-int32_t process_button(void) {
-	int32_t button = 0;
-	spin_lock_irqsave(&button_lock, EFLAGS);
-	button = buttons;
-	spin_unlock_irqrestore(&button_lock, EFLAGS);
-	return button;
-}
+// int32_t process_button(void) {
+// 	int32_t button = 0;
+// 	spin_lock_irqsave(&button_lock, EFLAGS);
+// 	button = buttons;
+// 	spin_unlock_irqrestore(&button_lock, EFLAGS);
+// 	return button;
+// }
 
 /*
  * tuxctl_init()
@@ -304,9 +304,9 @@ tuxctl_ioctl (struct tty_struct* tty, struct file* file,
 	case TUX_INIT:			return tuxctl_init(tty);
 	case TUX_BUTTONS:		return tuxctl_buttons(&arg);
 	case TUX_SET_LED:		return tuxctl_set_LED(tty, arg);
-	case TUX_LED_ACK:		break;
-	case TUX_LED_REQUEST:	break;
-	case TUX_READ_LED:		break;
+	case TUX_LED_ACK:		return -EINVAL;
+	case TUX_LED_REQUEST:	return -EINVAL;
+	case TUX_READ_LED:		return -EINVAL;
 	default:
 	    return -EINVAL;
     }
