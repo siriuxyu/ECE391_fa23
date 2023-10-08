@@ -39,7 +39,7 @@ static unsigned char buttons;
 static unsigned long EFLAGS;
 
 // 7-segment display number table
-static char number_table[16] {
+static char number_table[16] = {
 	0xE7, 			// 0
 	0xCB, 			// 2
 	0x8F, 			// 3

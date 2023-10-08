@@ -17,7 +17,7 @@ void tuxctl_reset(struct tty_struct* tty);
 
 
 int tuxctl_init(struct tty_struct* tty);
-int tuxctl_buttons(int32_t* ptr);
+int tuxctl_buttons(unsigned long* ptr);
 int tuxctl_set_LED(struct tty_struct* tty, int32_t arg);
 
 
