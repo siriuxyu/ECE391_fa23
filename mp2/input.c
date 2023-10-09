@@ -367,7 +367,7 @@ display_time_on_tux (int num_seconds)
 		disp_time = (disp_min << 8) | disp_sec | 0x040F0000;	// mask 4 digits, decimal point
 	}
 	else{
-		disp_time = (disp_min << 8) | disp_sec | 0x04080000;	// mask 4 digits, decimal point
+		disp_time = (disp_min << 8) | disp_sec | 0x04070000;	// mask 4 digits, decimal point
 	}
 	ioctl(fd, TUX_SET_LED, disp_time);
 }
