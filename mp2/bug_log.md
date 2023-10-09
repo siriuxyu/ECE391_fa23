@@ -138,3 +138,31 @@
     	LED_pattern[2] = 0;
     	LED_pattern[3] = 0;
       }
+
+
+
+## Bug04 - LEDs
+- __Problem__
+  - After I checked demo program, I wanted to make my ./adventure not to show the fourth(highest) LED if minute < 10;
+  - But after my modification, I found it only showed the fourth LED
+
+
+- __Reason__
+  - In my display_time_on_tux(), 
+  
+         if (min >= 10) {
+      		disp_time = (disp_min << 8) | disp_sec | 0x040F0000;	// mask 4 digits, decimal point
+      	}
+      	else{
+      		disp_time = (disp_min << 8) | disp_sec | 0x04080000;
+      	}
+      
+  - I only set the fourth LED, thus masking LED 1-3
+
+
+- __Method Used to Fix__
+  - as follows
+  
+         else{
+      		   disp_time = (disp_min << 8) | disp_sec | 0x04070000;	// mask 4th LED
+      	}
