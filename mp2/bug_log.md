@@ -1,7 +1,10 @@
-# Bug_log of mp2.1
+# Bug_log of mp2
 - Hengjia Yu
 - hengjia2@illinois.edu
 
+---
+
+# MP2-1
 
  ## Bug 01
  - __Problem__
@@ -72,18 +75,20 @@
             new_bar[40] = '\0';
             ... // copy other things into new_bar
 
- ------
+
+--- 
 
 
-# Bug Log for MP2.2
+# MP2-2
 
-## Bug01
+## Bug01 - Palette
 - __Problem__
   - Some black holes on my image
 
 
 - __Reason__
-  - Forgot to initiallize discovered[4096]
+  - Forgot to initiallize discovered[4096] all to 0
+  - Thus there are some colors that are wrongly not included into the level2
 
 
 - __Method Used to Fix__
@@ -93,21 +98,22 @@
 
 
 
-
-## Bug02
+## Bug02 - TUX
 - __Problem__
-
+  - everytime in a new program (i.e relaunch **./adventure**) the LEDs in tux won't change before I press **reset**
 
 
 - __Reason__
+  - in **tux_ioctl_init()**, I have code like this:
 
+         if (ack_flag == 0)   // did not recieve ACK
+            return 0;
 
+  - this preveneted me from initializing every tux.
 
 - __Method Used to Fix__
-
-
-
-
+  - Simply delete this line of code
+  - 
 
 
 
@@ -116,11 +122,19 @@
 
 ## Bug03
 - __Problem__
-
+  - I could once never use the tux, it has no response.
 
 
 - __Reason__
-
+  - in my **tux_ioctl_init()**, I sent a 4-byte packet to tux. But it should be 8-byte, including LED_patterns
 
 
 - __Method Used to Fix__
+      
+      int tuxctl_ioctl_init(struct tty_struct* tty) {
+    	unsigned char packet[8] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x0F, 0, 0, 0, 0};
+    	LED_pattern[0] = 0;
+    	LED_pattern[1] = 0;
+    	LED_pattern[2] = 0;
+    	LED_pattern[3] = 0;
+      }

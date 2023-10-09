@@ -359,19 +359,33 @@ display_time_on_tux (int num_seconds)
 // #endif
 	int min, sec;
 	int disp_min, disp_sec, disp_time;
-	min = num_seconds / 60;
+	min = num_seconds / 60;						// get minutes
 	sec = num_seconds % 60;
-	disp_min = (min / 10) << 4 | (min % 10);
+	disp_min = (min / 10) << 4 | (min % 10);	// convert to 4-digit
 	disp_sec = (sec / 10) << 4 | (sec % 10);
-	disp_time = (disp_min << 8) | disp_sec | 0x040F0000;	// mask 4 digits, decimal point
+	if (min >= 10) {
+		disp_time = (disp_min << 8) | disp_sec | 0x040F0000;	// mask 4 digits, decimal point
+	}
+	else{
+		disp_time = (disp_min << 8) | disp_sec | 0x04080000;	// mask 4 digits, decimal point
+	}
 	ioctl(fd, TUX_SET_LED, disp_time);
 }
 
 
 /* ----------------------------test zone below----------------------------*/
 
+/* 
+ * test_convert_time
+ *   DESCRIPTION: More Readable Test display_time_on_tux
+ *   INPUTS: min -- minutes
+ *			 sec -- seconds
+ *   OUTPUTS: none
+ *   RETURN VALUE: none 
+ *   SIDE EFFECTS: changes state of controller's display
+ */
 void test_convert_time(int min, int sec) {
-	int disp_sec = min * 60 + sec;
+	int disp_sec = min * 60 + sec;			// convert to seconds
 	display_time_on_tux(disp_sec);
 }
 

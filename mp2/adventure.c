@@ -799,13 +799,13 @@ status_thread (void* ignore)
  */
 static void* tux_thread(void* ignore) {
 	while (1) {
-		pthread_mutex_lock(&tux_lock);
+		pthread_mutex_lock(&tux_lock);					// lock the tux_lock
 		while (!tux_flag) {
 			pthread_cond_wait(&tux_cv, &tux_lock);
 		}
 		switch (tux_cmd)
 		{
-		case CMD_UP:	move_photo_down();	break;
+		case CMD_UP:	move_photo_down();	break;		// the arrow keys are reversed
 		case CMD_DOWN:	move_photo_up();	break;
 		case CMD_LEFT:	move_photo_right();	break;
 		case CMD_RIGHT:	move_photo_left();	break;
@@ -918,7 +918,7 @@ main ()
     push_cleanup (cancel_status_thread, NULL); {
 
 	/* @@ Checkpoint 2 */
-	if (0 != pthread_create(&tux_thread_id, NULL, tux_thread, NULL)) {
+	if (0 != pthread_create(&tux_thread_id, NULL, tux_thread, NULL)) {	// create tux thread
 		PANIC("failed to create tux thread");
 	}
 	push_cleanup(cancel_tux_thread, NULL); {
