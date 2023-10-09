@@ -49,7 +49,7 @@ static char number_table[16] = {
 	0xED, 			// 6
 	0x86, 			// 7
 	0xEF, 			// 8
-	0xAE, 			// 9
+	0xAF, 			// 9
 
 	0xEE, 			// A
 	0x6D, 			// B
