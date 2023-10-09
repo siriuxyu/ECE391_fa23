@@ -36,7 +36,7 @@ static bool ack_flag;			// 1 = ack, 0 = not ack; the ack flag returned by the tu
 static spinlock_t button_lock;
 static unsigned char LED_pattern[4];
 static unsigned char buttons;
-static unsigned long EFLAGS;
+
 
 // 7-segment display number table
 static char number_table[16] = {
@@ -69,6 +69,9 @@ static char number_table[16] = {
 void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
 {
     unsigned a, b, c;
+	int idx;
+	int EFLAGS;
+	unsigned char package[8] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x0F, 0, 0, 0, 0};				// 8 bytes of the packet
 
     a = packet[0]; /* Avoid printk() sign extending the 8-bit */
     b = packet[1]; /* values when printing them. */
@@ -77,11 +80,28 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
 	switch (a)
 	{
 		case MTCP_ACK:			
-	    	tuxctl_ack();
+	    	ack_flag = 1;
+			break;
+
 		case MTCP_BIOC_EVENT:
-			tuxctl_bioc_event(b, c);
-		case MTCP_RESET:
-			tuxctl_reset(tty);
+			spin_lock_irqsave(&button_lock, EFLAGS);
+			buttons = 0;
+			buttons |= b & 0x0F;
+			buttons |= (c & 0x01) << 4;		// right | left | down | up | C | B | A | start
+			buttons |= (c & 0x02) << 5;
+			buttons |= (c & 0x04) << 3;
+			buttons |= (c & 0x08) << 4;
+			spin_unlock_irqrestore(&button_lock, EFLAGS);
+			break;
+
+		case MTCP_RESET:	
+			for (idx = 4; idx < 8; idx++) {
+				package[idx] = LED_pattern[idx - 4];
+			}
+
+			tuxctl_ldisc_put(tty, package, 8);
+			ack_flag = 0;
+			break;
 	
 		default:
 			return;
@@ -91,72 +111,72 @@ void tuxctl_handle_packet (struct tty_struct* tty, unsigned char* packet)
 }
 
 
-/*
- * tuxctl_ack()
- *   DESCRIPTION: Acknowledge the tux controller
- *   INPUTS: none
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: set ack_flag to 1
-*/
+// /*
+//  * tuxctl_ack()
+//  *   DESCRIPTION: Acknowledge the tux controller
+//  *   INPUTS: none
+//  *   OUTPUTS: none
+//  *   RETURN VALUE: none
+//  *   SIDE EFFECTS: set ack_flag to 1
+// */
 
-void tuxctl_ack(void)
-{
-	ack_flag = 1;
-}
-
-
-/*
- * tuxctl_bioc_event()
- *   DESCRIPTION: Handle the button event
- *   INPUTS: arg1 -- the first byte of the packet
- *			 arg2 -- the second byte of the packet
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: set buttons to the button status
-*/
-
-void tuxctl_bioc_event(unsigned arg1, unsigned arg2)
-{
-	spin_lock_irqsave(&button_lock, EFLAGS);
-
-	buttons = 0;
-	buttons |= arg1 & 0x0F;
-	buttons |= (arg2 & 0x01) << 4;		// right | left | down | up | C | B | A | start
-	buttons |= (arg2 & 0x02) << 5;
-	buttons |= (arg2 & 0x04) << 3;
-	buttons |= (arg2 & 0x08) << 4;
-
-	spin_unlock_irqrestore(&button_lock, EFLAGS);
-}
+// void tuxctl_ack(void)
+// {
+// 	ack_flag = 1;
+// }
 
 
-/*
- * tuxctl_reset()
- *   DESCRIPTION: Reset the tux controller
- *   INPUTS: arg1 -- the first byte of the packet
- *			 arg2 -- the second byte of the packet
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: reset the tux controller
-*/
-void tuxctl_reset(struct tty_struct* tty)
-{
-	unsigned char packet[8] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x0F, 0, 0, 0, 0};				// 8 bytes of the packet
+// /*
+//  * tuxctl_bioc_event()
+//  *   DESCRIPTION: Handle the button event
+//  *   INPUTS: arg1 -- the first byte of the packet
+//  *			 arg2 -- the second byte of the packet
+//  *   OUTPUTS: none
+//  *   RETURN VALUE: none
+//  *   SIDE EFFECTS: set buttons to the button status
+// */
 
-	// packet[0] = MTCP_BIOC_ON;
-	// packet[1] = MTCP_LED_USR;
-	// packet[2] = MTCP_LED_SET;
-	// packet[3] = 0x0F;
+// void tuxctl_bioc_event(unsigned arg1, unsigned arg2)
+// {
+// 	spin_lock_irqsave(&button_lock, EFLAGS);
 
-	int idx;
-	for (idx = 4; idx < 8; idx++) {
-		packet[idx] = LED_pattern[idx - 4];
-	}
+// 	buttons = 0;
+// 	buttons |= arg1 & 0x0F;
+// 	buttons |= (arg2 & 0x01) << 4;		// right | left | down | up | C | B | A | start
+// 	buttons |= (arg2 & 0x02) << 5;
+// 	buttons |= (arg2 & 0x04) << 3;
+// 	buttons |= (arg2 & 0x08) << 4;
 
-	tuxctl_ldisc_put(tty, packet, 8);
-	ack_flag = 0;
-}
+// 	spin_unlock_irqrestore(&button_lock, EFLAGS);
+// }
+
+
+// /*
+//  * tuxctl_reset()
+//  *   DESCRIPTION: Reset the tux controller
+//  *   INPUTS: arg1 -- the first byte of the packet
+//  *			 arg2 -- the second byte of the packet
+//  *   OUTPUTS: none
+//  *   RETURN VALUE: none
+//  *   SIDE EFFECTS: reset the tux controller
+// */
+// void tuxctl_reset(struct tty_struct* tty)
+// {
+// 	unsigned char packet[8] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x0F, 0, 0, 0, 0};				// 8 bytes of the packet
+
+// 	// packet[0] = MTCP_BIOC_ON;
+// 	// packet[1] = MTCP_LED_USR;
+// 	// packet[2] = MTCP_LED_SET;
+// 	// packet[3] = 0x0F;
+
+// 	int idx;
+// 	for (idx = 4; idx < 8; idx++) {
+// 		packet[idx] = LED_pattern[idx - 4];
+// 	}
+
+// 	tuxctl_ldisc_put(tty, packet, 8);
+// 	ack_flag = 0;
+// }
 
 
 
@@ -194,17 +214,14 @@ void tuxctl_reset(struct tty_struct* tty)
 */
 int tuxctl_ioctl_init(struct tty_struct* tty)
 {
-	unsigned char packet[4] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x00};
-	if (!ack_flag) {
-		return 0;
-	}
+	unsigned char packet[8] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x0F, 0, 0, 0, 0};
+	LED_pattern[0] = 0;				// initialize the LED pattern -- all to 0
+	LED_pattern[1] = 0;
+	LED_pattern[2] = 0;
+	LED_pattern[3] = 0;
 
-	// packet[0] = MTCP_BIOC_ON;
-	// packet[1] = MTCP_LED_USR;
-	// packet[2] = MTCP_LED_SET;
-	// packet[3] = 0x00;			// set all LED to 0
-	tuxctl_ldisc_put(tty, packet, 4);
-	ack_flag = 0;
+	tuxctl_ldisc_put(tty, packet, 8);
+	ack_flag = 1;
 	buttons = 0xFF;
 	button_lock = SPIN_LOCK_UNLOCKED;
 
@@ -221,7 +238,8 @@ int tuxctl_ioctl_init(struct tty_struct* tty)
 */
 int tuxctl_ioctl_buttons(unsigned long ptr)
 {
-	if (ptr == NULL){
+	int EFLAGS;
+	if ((int32_t*)ptr == NULL){
 		return -EINVAL;
 	}
 
@@ -250,11 +268,6 @@ int tuxctl_ioctl_set_LED(struct tty_struct* tty, unsigned long arg)
 	int curr_loc;		// current LED location
 	int curr_dec;		// current decimal point
 
-
-	if (arg < 0 || arg > 0xFFFFFFFF){			// go beyond the 32-bit
-		return -EINVAL;
-	}
-	
 
 	for (i = 0; i < 4; i++){					// loop each LED
 		curr_num = (arg >> (i * 4)) & 0x0F;

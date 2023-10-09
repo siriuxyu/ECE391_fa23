@@ -61,10 +61,10 @@
 #include "module/tuxctl-ioctl.h"
 
 /* set to 1 and compile this file by itself to test functionality */
-#define TEST_INPUT_DRIVER 1
+#define TEST_INPUT_DRIVER 0
 
 /* set to 1 to use tux controller; otherwise, uses keyboard input */
-#define USE_TUX_CONTROLLER 1
+#define USE_TUX_CONTROLLER 0
 
 
 /* stores original terminal settings */
@@ -90,6 +90,7 @@ int
 init_input ()
 {
     struct termios tio_new;
+	int ldisc_num = N_MOUSE;
 
     /*
      * Set non-blocking mode so that stdin can be read without blocking
@@ -128,7 +129,7 @@ init_input ()
 		// exit(1);
 	}
 
-	int ldisc_num = N_MOUSE;
+	
 	ioctl(fd, TIOCSETD, &ldisc_num);
 	ioctl(fd, TUX_INIT, 0);
 
@@ -327,15 +328,15 @@ cmd_t get_tux_command() {
 	ioctl(fd, TUX_BUTTONS, &buttons_status);
 	switch (buttons_status)				// r | l | d | u | C | B | A | S
 	{
-	case 0x7F:	return CMD_RIGHT;		// tux_right
-	case 0xBF:	return CMD_LEFT;		// tux_left
-	case 0xDF:	return CMD_DOWN;		// tux_down
-	case 0xEF:	return CMD_UP;			// tux_up
-	case 0xF7:	return CMD_MOVE_RIGHT;	// C
-	case 0xFD:	return CMD_MOVE_LEFT;	// A
-	case 0xFB:	return CMD_ENTER;		// B
+		case 0x7F:	return CMD_RIGHT;		// tux_right
+		case 0xBF:	return CMD_LEFT;		// tux_left
+		case 0xDF:	return CMD_DOWN;		// tux_down
+		case 0xEF:	return CMD_UP;			// tux_up
+		case 0xF7:	return CMD_MOVE_RIGHT;	// C
+		case 0xFD:	return CMD_MOVE_LEFT;	// A
+		case 0xFB:	return CMD_ENTER;		// B
 
-	default:	return CMD_NONE;
+		default:	return CMD_NONE;
 	}
 }
 
@@ -356,11 +357,13 @@ display_time_on_tux (int num_seconds)
 // #if (USE_TUX_CONTROLLER != 0)
 // #error "Tux controller code is not operational yet."
 // #endif
-	int min = num_seconds / 60;
-	int sec = num_seconds % 60;
-	int disp_min = (min / 10) << 4 | (min % 10);
-	int disp_sec = (sec / 10) << 4 | (sec % 10);
-	int disp_time = disp_min << 8 | disp_sec | 0x040F0000;	// mask 4 digits, decimal point
+	int min, sec;
+	int disp_min, disp_sec, disp_time;
+	min = num_seconds / 60;
+	sec = num_seconds % 60;
+	disp_min = (min / 10) << 4 | (min % 10);
+	disp_sec = (sec / 10) << 4 | (sec % 10);
+	disp_time = (disp_min << 8) | disp_sec | 0x040F0000;	// mask 4 digits, decimal point
 	ioctl(fd, TUX_SET_LED, disp_time);
 }
 
@@ -373,13 +376,19 @@ void test_convert_time(int min, int sec) {
 }
 
 
+
 #if (TEST_INPUT_DRIVER == 1)
 int
 main ()
 {
 	
-    cmd_t last_cmd = CMD_NONE;
+    cmd_t last_cmd;
     cmd_t cmd;
+	int i = 0;
+
+	last_cmd = CMD_NONE;
+	cmd = CMD_NONE;
+
     static const char* const cmd_name[NUM_COMMANDS] = {
         "none", "right", "left", "up", "down", 
 	"move left", "enter", "move right", "typed command", "quit"
@@ -390,8 +399,8 @@ main ()
 	perror ("ioperm");
 	return 3;
     }
-	time_t start_time = clock();
-	int i = 0;
+	// time_t start_time = clock();
+	
 
     init_input ();
 	#if (USE_TUX_CONTROLLER == 0)
@@ -406,40 +415,42 @@ main ()
 	// display_time_on_tux (83);
     }
 	#else
+
+
 	// test input from tux
 	// while (1) {
     //     while ((cmd = get_tux_command()) == last_cmd);
 	// 	last_cmd = cmd;
-	// 	printk ("command issued: %s\n", cmd_name[cmd]);
+	// 	printf ("command issued: %s\n", cmd_name[cmd]);
 	// }
 	
 	// test LED
+
 	test_convert_time(12, 34);
-	printk ("time 12:34\n");
+	printf ("time 12:34\n");
 	sleep(1);
 	test_convert_time(0, 0);
-	printk ("time 00:00\n");
+	printf ("time 00:00\n");
 	sleep(1);
 	test_convert_time(60, 10);
-	printk ("time 60:10\n");
+	printf ("time 60:10\n");
 	sleep(1);
-	// test_convert_time(99, 59);
-	// printk ("time 99:59\n");
-	// sleep(1);
-	test_convert_time(255, 255);
-	printk ("time 255:255\n");
+	test_convert_time(99, 59);
+	printf ("time 99:59\n");
 	sleep(1);
 
-	while (i < 3602) {
-		display_time_on_tux(i++);
-		printk ("time %d:%d\n", i / 60, i % 60);
-		sleep(0.5);
+	while (i < 70) {
+		display_time_on_tux(++i);
+	 	printf ("time %d:%d\n", i / 60, i % 60);
+	 	sleep(1);
 	}
 
-	// display_time_on_tux (83);
-    shutdown_input ();
-    return 0;
+	display_time_on_tux (83);
 	#endif
+
+    shutdown_input ();
+	
+    return 0;
 }
 #endif
 
