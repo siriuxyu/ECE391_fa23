@@ -180,6 +180,7 @@ static pthread_cond_t  tux_cv = PTHREAD_COND_INITIALIZER;
 // static pthread_cond_t  cmd_cv = PTHREAD_COND_INITIALIZER;
 
 static cmd_t tux_cmd = CMD_NONE;
+static cmd_t prev_tux_cmd = CMD_NONE;
 static int tux_flag = 0;
 
 
@@ -379,13 +380,23 @@ game_loop ()
 	// @@ Checkpoint 2
 	pthread_mutex_lock(&tux_lock);
 	tux_cmd = get_tux_command();
-	if (CMD_NONE != tux_cmd) {
-		tux_flag = 1;
+
+	if (tux_cmd == CMD_UP || tux_cmd == CMD_DOWN || tux_cmd == CMD_LEFT || tux_cmd == CMD_RIGHT) {
+		tux_flag = 1;					// arrow keys can be repeated
 		pthread_cond_signal(&tux_cv);
 	}
+	else if (CMD_NONE != tux_cmd && prev_tux_cmd != tux_cmd) {
+		tux_flag = 1;					// other keys can't be repeated
+		pthread_cond_signal(&tux_cv);
+	}
+	else {
+		tux_flag = 0;					// let the thread wait
+	}
+	prev_tux_cmd = tux_cmd;
 	pthread_mutex_unlock(&tux_lock);
 	
 	cmd = get_command ();
+	
 	switch (cmd) {
 	    case CMD_UP:    move_photo_down ();  break;
 	    case CMD_RIGHT: move_photo_left ();  break;

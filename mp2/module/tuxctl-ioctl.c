@@ -32,7 +32,7 @@
 
 /************************ Protocol Implementation *************************/
 
-static bool ack_flag;		// 1 = ack, 0 = not ack
+static bool ack_flag;			// 1 = ack, 0 = not ack; the ack flag returned by the tux
 static spinlock_t button_lock;
 static unsigned char LED_pattern[4];
 static unsigned char buttons;
@@ -156,7 +156,6 @@ void tuxctl_reset(struct tty_struct* tty)
 
 	tuxctl_ldisc_put(tty, packet, 8);
 	ack_flag = 0;
-	buttons = 0xFF;
 }
 
 
@@ -193,7 +192,7 @@ void tuxctl_reset(struct tty_struct* tty)
  *   RETURN VALUE: 0
  *   SIDE EFFECTS: initialize the tux controller
 */
-int tuxctl_init(struct tty_struct* tty)
+int tuxctl_ioctl_init(struct tty_struct* tty)
 {
 	unsigned char packet[4] = {MTCP_BIOC_ON, MTCP_LED_USR, MTCP_LED_SET, 0x00};
 	if (!ack_flag) {
@@ -220,7 +219,7 @@ int tuxctl_init(struct tty_struct* tty)
  *   RETURN VALUE: 0 if success, -EINVAL if ptr is NULL
  *   SIDE EFFECTS: none
 */
-int tuxctl_buttons(unsigned long* ptr)
+int tuxctl_ioctl_buttons(unsigned long ptr)
 {
 	if (ptr == NULL){
 		return -EINVAL;
@@ -243,18 +242,19 @@ int tuxctl_buttons(unsigned long* ptr)
  *   RETURN VALUE: 0 if success, -EINVAL if arg is invalid
  *   SIDE EFFECTS: set the LED pattern
 */
-int tuxctl_set_LED(struct tty_struct* tty, int32_t arg)
+int tuxctl_ioctl_set_LED(struct tty_struct* tty, unsigned long arg)
 {
 	unsigned char packet[6] = {0, 0, 0, 0, 0, 0};
 	int i;
-	int curr_num;
-	int curr_loc;
-	int curr_dec;
+	int curr_num;		// current number
+	int curr_loc;		// current LED location
+	int curr_dec;		// current decimal point
 
 
-	if (arg < 0 || arg > 0xFFFFFFFF){
+	if (arg < 0 || arg > 0xFFFFFFFF){			// go beyond the 32-bit
 		return -EINVAL;
 	}
+	
 
 	for (i = 0; i < 4; i++){					// loop each LED
 		curr_num = (arg >> (i * 4)) & 0x0F;
@@ -270,6 +270,9 @@ int tuxctl_set_LED(struct tty_struct* tty, int32_t arg)
 	}
 	packet[0] = MTCP_LED_SET;
 	packet[1] = 0x0F;
+	if (!ack_flag) {
+		return 0;
+	}
 	tuxctl_ldisc_put(tty, packet, 6);
 	ack_flag = 0;
 
@@ -295,9 +298,9 @@ tuxctl_ioctl (struct tty_struct* tty, struct file* file,
 	      unsigned cmd, unsigned long arg)
 {
     switch (cmd) {
-	case TUX_INIT:			return tuxctl_init(tty);
-	case TUX_BUTTONS:		return tuxctl_buttons(&arg);
-	case TUX_SET_LED:		return tuxctl_set_LED(tty, arg);
+	case TUX_INIT:			return tuxctl_ioctl_init(tty);
+	case TUX_BUTTONS:		return tuxctl_ioctl_buttons(arg);
+	case TUX_SET_LED:		return tuxctl_ioctl_set_LED(tty, arg);
 	case TUX_LED_ACK:		return -EINVAL;
 	case TUX_LED_REQUEST:	return -EINVAL;
 	case TUX_READ_LED:		return -EINVAL;

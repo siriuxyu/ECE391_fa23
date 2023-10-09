@@ -327,13 +327,13 @@ cmd_t get_tux_command() {
 	ioctl(fd, TUX_BUTTONS, &buttons_status);
 	switch (buttons_status)				// r | l | d | u | C | B | A | S
 	{
-	case 0x7F:	return CMD_RIGHT;	
-	case 0xBF:	return CMD_LEFT;
-	case 0xDF:	return CMD_DOWN;
-	case 0xEF:	return CMD_UP;
-	case 0xF7:	return CMD_MOVE_RIGHT;
-	case 0xFD:	return CMD_MOVE_LEFT;
-	case 0xFB:	return CMD_ENTER;
+	case 0x7F:	return CMD_RIGHT;		// tux_right
+	case 0xBF:	return CMD_LEFT;		// tux_left
+	case 0xDF:	return CMD_DOWN;		// tux_down
+	case 0xEF:	return CMD_UP;			// tux_up
+	case 0xF7:	return CMD_MOVE_RIGHT;	// C
+	case 0xFD:	return CMD_MOVE_LEFT;	// A
+	case 0xFB:	return CMD_ENTER;		// B
 
 	default:	return CMD_NONE;
 	}
@@ -360,7 +360,7 @@ display_time_on_tux (int num_seconds)
 	int sec = num_seconds % 60;
 	int disp_min = (min / 10) << 4 | (min % 10);
 	int disp_sec = (sec / 10) << 4 | (sec % 10);
-	int disp_time = disp_min << 8 | disp_sec | 0x040F0000;
+	int disp_time = disp_min << 8 | disp_sec | 0x040F0000;	// mask 4 digits, decimal point
 	ioctl(fd, TUX_SET_LED, disp_time);
 }
 
