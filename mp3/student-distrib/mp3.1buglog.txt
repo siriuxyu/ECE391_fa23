@@ -1,0 +1,35 @@
+[Bug 1]
+Symptom: the OS crashes when running the launch_tests to test divide_by_0_exception
+Finding: 10 min
+Fixing: 1 line
+Solution: load IDTR to the descriptor idt_desc_ptr
+
+[Bug 2]
+Symptom: the exception message flashes on the screen
+Finding: 30 min
+Fixing: 1 same line in multiple functions
+Solution: adding while(1) after printing the exception message in each of the handlers
+
+[Bug 3]
+Symptom: the interrupts (keyboard and rtc) are not enabled
+Finding: 1 hour
+Fixing: 1 line
+Solution: uncommenting the sti() in kernel.c after initializing and before testing
+
+[Bug 4]
+Symptom: the rtc is not making the screen changes in a fixed pattern at all
+Finding: 1 hour
+Fixing: 15 lines
+Solution: setting and changing the register A, B, C in a correct manner as is stated in the official website
+
+[Bug 5]
+Symptom: Pass other tests but paging is disable. 
+Finding: 2 hours
+Fixing:  1 min
+Solution: add page_init() function to kernel.c
+
+[Bug 6]
+Symptom: Paging is disable. When we enter it(mp4), it just goes back to previous entry.
+Finding: 30 min
+Fixing:  1 h
+Solution: cr4 is not correctly set to enable 4 mb page (enable PSE).

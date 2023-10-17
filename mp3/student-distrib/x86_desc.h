@@ -172,7 +172,13 @@ extern x86_desc_t idt_desc_ptr;
 do {                                                             \
     str.offset_31_16 = ((uint32_t)(handler) & 0xFFFF0000) >> 16; \
     str.offset_15_00 = ((uint32_t)(handler) & 0xFFFF);           \
+    str.present = 1;                                             \
+    str.seg_selector = KERNEL_CS;                                \
+    str.reserved2 = 1;                                           \
+    str.reserved1 = 1;                                           \
+    str.size = 1;                                                \
 } while (0)
+
 
 /* Load task register.  This macro takes a 16-bit index into the GDT,
  * which points to the TSS entry.  x86 then reads the GDT's TSS
