@@ -1,13 +1,101 @@
 #define ASM
 
 #define HANDLE_LINK(name, func)            \
-.GLOBL name               ;\
-name:   PUSHAL          ;\
-	    PUSHFL          ;\
-	    CALL  func      ;\
-	    POPFL           ;\
-        POPAL           ;\
+.GLOBL name               		;\
+name:   						\
+		ADD 		$-4, %ESP   ;\
+		PUSHL		%EAX		;\
+								\
+		PUSHL		%FS         ;\
+		PUSHL		%ES         ;\
+		PUSHL		%DS         ;\
+		PUSHL		%EAX        ;\
+		PUSHL		%EBP        ;\
+		PUSHL		%EDI        ;\
+		PUSHL		%ESI        ;\
+		PUSHL		%EDX        ;\
+		PUSHL		%ECX        ;\
+								\
+	    CALL  		func      	;\
+		CALL 		sig_handler ;\
+								\
+		POPL		%ECX        ;\
+		POPL		%EDX        ;\
+		POPL		%ESI        ;\
+		POPL		%EDI        ;\
+		POPL		%EBP        ;\
+		ADDL 		$4, %ESP    ;\
+		POPL		%DS         ;\
+		POPL		%ES         ;\
+		POPL		%FS         ;\
+								\
+		ADDL		$4, %ESP    ;\
+		ADDL 		$4, %ESP    ;\
+								\
 	    IRET
+
+
+.GLOBL sys_call_linkage
+sys_call_linkage:
+		CMPL	$0x00, %EAX
+		JLE		error_num
+		CMPL	$0x0D, %EAX				
+		JG		error_num
+
+		ADDL 	$-4, %ESP		# push dummy data for Error code
+		PUSHL   %EAX
+
+		PUSHL   %FS				# save ALL
+		PUSHL   %ES
+		PUSHL   %DS
+		PUSHL   %EAX
+		PUSHL   %EBP
+		PUSHL   %EDI
+		PUSHL   %ESI
+		PUSHL   %EDX
+		PUSHL   %ECX
+
+		PUSHL	%EDX			# parameters
+		PUSHL	%ECX
+		PUSHL	%EBX
+		CALL 	*jump_table(, %EAX, 4)		
+		ADDL	$12, %ESP
+
+		POPL	%ECX			# restore ALL
+		POPL	%EDX
+		POPL	%ESI
+		POPL	%EDI
+		POPL	%EBP
+		ADDL 	$4, %ESP		# do not pop EAX
+		POPL	%DS
+		POPL	%ES
+		POPL	%FS
+
+		ADDL 	$4, %ESP		# IRQ
+		ADDL 	$4, %ESP		# pop dummy data for Error code
+		JMP 	end_call
+
+error_num:
+		MOVL	$-1, %EAX
+
+end_call:
+		IRET
+
+jump_table:	
+		.long  0 # make sure that the numbers are correct
+		.long  halt
+		.long  execute
+		.long  read
+		.long  write
+		.long  open
+		.long  close
+		.long  getargs
+		.long  vidmap
+		.long  set_handler
+		.long  sigreturn
+		.long  malloc
+		.long  free
+		.long  ioctl
 
 
 HANDLE_LINK(division_error_linkage, division_error_handler);
@@ -30,6 +118,6 @@ HANDLE_LINK(floating_point_linkage, floating_point_handler);
 HANDLE_LINK(alignment_check_linkage, alignment_check_handler);
 HANDLE_LINK(machine_check_linkage, machine_check_handler);
 HANDLE_LINK(simd_floating_point_linkage, simd_floating_point_handler);
+HANDLE_LINK(PIT_linkage, PIT_handler);
 HANDLE_LINK(keyboard_linkage, keyboard_handler);
 HANDLE_LINK(rtc_linkage, rtc_handler);
-HANDLE_LINK(sys_call_linkage, sys_call_handler)

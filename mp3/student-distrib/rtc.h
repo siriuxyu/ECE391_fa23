@@ -14,9 +14,15 @@
 #define NUM_COLS    80
 #define NUM_ROWS    25
 
-
+// checkpoint 1
 extern void rtc_init(); // initialize RTC
 extern void rtc_handler(); // RTC interrupt handler
+
+// checkpoint 2
+extern int32_t rtc_open(const uint8_t* filename); // set the interrupt rate to be 2 Hz
+extern int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes); // set a flag and wait for an interrupt
+extern int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes); // set the rate of periodic interrupts
+extern int32_t rtc_close(int32_t fd); // do nothing and return 0
 
 
 

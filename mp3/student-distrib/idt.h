@@ -28,6 +28,7 @@ enum idt_entries{
     MACHINE_CHECK = 0X12,
     SIMD_FLOATING_POINT = 0x13,
     // interrupts
+    PIT = 0x20,
     KEYBOARD = 0x21,
     RTC = 0x28,
     // system call

@@ -2,15 +2,24 @@
  * vim:ts=4 noexpandtab */
 
 #include "lib.h"
+#include "page.h"
+#include "system_call.h"
 
 #define VIDEO       0xB8000
 #define NUM_COLS    80
 #define NUM_ROWS    25
 #define ATTRIB      0x7
+#define MEM_SIZE    4*1024
 
+static uint8_t prompt_color = 0x7;
+static int terminal_id = 0;
+static int scheduler_id = -1;
 static int screen_x;
 static int screen_y;
+static int keyboard_flag = 0;
 static char* video_mem = (char *)VIDEO;
+char* t_video_mem[MAX_NUM] = {(char *)0xBA000, (char *)0xBB000, (char *)0xBC000};
+static int newline_flag = 0;
 
 /* void clear(void);
  * Inputs: void
@@ -20,8 +29,11 @@ void clear(void) {
     int32_t i;
     for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
         *(uint8_t *)(video_mem + (i << 1)) = ' ';
-        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
+        *(uint8_t *)(video_mem + (i << 1) + 1) = prompt_color;
     }
+    screen_x = 0; // reset the cursor position
+    screen_y = 0;
+    update_cursor(screen_x, screen_y);
 }
 
 /* Standard printf().
@@ -168,17 +180,126 @@ int32_t puts(int8_t* s) {
  * Return Value: void
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
-    if(c == '\n' || c == '\r') {
-        screen_y++;
-        screen_x = 0;
-    } else {
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
-        screen_x++;
-        screen_x %= NUM_COLS;
-        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+    int32_t curr_scheduler = scheduler_id;
+    if(curr_scheduler == -1) curr_scheduler = 0;
+    if(terminal_id == curr_scheduler || keyboard_flag){ // doint a if here to make sure we can write to the screen correctly
+        if(c == '\n' || c == '\r') {
+            if(newline_flag){
+                newline_flag = 0;
+                return;
+            }
+            if(screen_y == NUM_ROWS - 1){ // condition for scrolling up
+                scroll_up();
+                return;
+            }
+            // if(screen_x == 0 && screen_y != 0) return;
+            screen_y++;
+            screen_x = 0;
+        } else {
+            if(newline_flag) newline_flag = 0;
+            // if(scroll_flag) scroll_up();
+            // t_video_mem[scheduler_id]
+            *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
+            *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = prompt_color;
+            screen_x++;
+            // checkpoint 2 change the order of the statements
+            if(screen_x == NUM_COLS) newline_flag = 1;
+            if(screen_x == NUM_COLS && screen_y == NUM_ROWS - 1) scroll_up();
+            screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+            screen_x %= NUM_COLS;
+        }
+        update_cursor(screen_x, screen_y);
+    }
+    else{ // while other scheduler is occupying the time slice
+        if(c == '\n' || c == '\r') {
+            if(terminal[curr_scheduler].t_newline_flag){
+                terminal[curr_scheduler].t_newline_flag = 0;
+                return;
+            }
+            if(terminal[curr_scheduler].t_screen_y == NUM_ROWS - 1){ // condition for scrolling up
+                scroll_up();
+                return;
+            }
+            // if(screen_x == 0 && screen_y != 0) return;
+            terminal[curr_scheduler].t_screen_y++;
+            terminal[curr_scheduler].t_screen_x = 0;
+        } else {
+            if(terminal[curr_scheduler].t_newline_flag) terminal[curr_scheduler].t_newline_flag = 0;
+            // if(scroll_flag) scroll_up();
+            *(uint8_t *)(video_mem + ((NUM_COLS * terminal[curr_scheduler].t_screen_y + terminal[curr_scheduler].t_screen_x) << 1)) = c;
+            *(uint8_t *)(video_mem + ((NUM_COLS * terminal[curr_scheduler].t_screen_y + terminal[curr_scheduler].t_screen_x) << 1) + 1) = terminal[curr_scheduler].t_prompt_color;
+            terminal[curr_scheduler].t_screen_x++;
+            // checkpoint 2 change the order of the statements
+            if(terminal[curr_scheduler].t_screen_x == NUM_COLS) terminal[curr_scheduler].t_newline_flag = 1;
+            if(terminal[curr_scheduler].t_screen_x == NUM_COLS && terminal[curr_scheduler].t_screen_y == NUM_ROWS - 1) scroll_up();
+            terminal[curr_scheduler].t_screen_y = (terminal[curr_scheduler].t_screen_y + (terminal[curr_scheduler].t_screen_x / NUM_COLS)) % NUM_ROWS;
+            terminal[curr_scheduler].t_screen_x %= NUM_COLS;
+        }
     }
 }
+
+/* void scroll_up(void);
+ * Inputs: void
+ * Return Value: void
+ *  Function: helper function to scroll down the screen */
+void scroll_up(void){
+    int32_t i;
+    for (i = 0; i < (NUM_ROWS - 1) * NUM_COLS; i++) 
+    {
+        video_mem[i << 1] = video_mem[(i + NUM_COLS) << 1];   // scroll each position
+        video_mem[(i << 1) + 1] = video_mem[((i + NUM_COLS) << 1) + 1];   // scroll each position
+    }
+    for (; i < NUM_ROWS * NUM_COLS; i++){
+        video_mem[i << 1] = ' ';  // set the last line to spaces
+        if(terminal_id == scheduler_id || keyboard_flag)
+            video_mem[(i << 1) + 1] = prompt_color;
+        else
+            video_mem[(i << 1) + 1] = terminal[scheduler_id].t_prompt_color;
+    }
+    int32_t curr_scheduler = scheduler_id;
+    if(terminal_id == curr_scheduler || keyboard_flag){
+        screen_x = 0;
+        screen_y = NUM_ROWS - 1;
+        update_cursor(screen_x, screen_y);
+        return;
+    }
+    terminal[curr_scheduler].t_screen_x = 0;
+    terminal[curr_scheduler].t_screen_y = NUM_ROWS - 1;
+    // scroll_flag = 0;
+}
+
+/* void enable_cursor(uint8_t start, uint8_t end);
+ * Inputs: start, end
+ * Return Value: none
+ *  Function: function to set the cursor */
+void enable_cursor(uint8_t start, uint8_t end){
+    outb(0x0A, CURSOR_PORT);    // select cursor start register in port
+    outb((inb(CURSOR_DATA) & 0xC0) | start, CURSOR_DATA);  // start - start cursor shape
+    outb(0x0B, CURSOR_PORT);    // select cursor end register in port
+    outb((inb(CURSOR_DATA) & 0xE0) | end, CURSOR_DATA);   // end - end cursor shape
+}
+
+/* void disable_cursor();
+ * Inputs:  none
+ * Return Value: none
+ *  Function: function to disable the cursor */
+void disable_cursor(uint8_t start, uint8_t end){
+    outb(0x0A, CURSOR_PORT);  // low cursor shape register
+    outb(0x20, CURSOR_DATA);  // bit 5 disables the cursor
+}
+
+/* void update_cursor(int x, int y);
+ * Inputs: x, y position of the cursor
+ * Return Value: none
+ *  Function: function to update the cursor */
+void update_cursor(int x, int y){
+    uint16_t position = y * NUM_COLS + x;  // calculate the position
+    outb(0x0F, CURSOR_PORT);  // lower byte
+    outb((uint8_t) (position & 0xFF), CURSOR_DATA);
+    outb(0x0E, CURSOR_PORT);  // higher byte
+    outb((uint8_t) ((position>>8) & 0xFF), CURSOR_DATA);
+}
+
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
  * Inputs: uint32_t value = number to convert
@@ -474,3 +595,446 @@ void test_interrupts(void) {
         video_mem[i << 1]++;
     }
 }
+
+/* void screen_backspace(void)
+ * Inputs: void
+ * Return Value: void
+ * Function: clear the last memory address if possible (including the consideration of line changing)*/
+void screen_backspace(void){
+    if(screen_x == 0){
+        // cursor is at the start of the screen, no need to backspace
+        if(screen_y == 0) return;
+        screen_y--;
+        screen_x = NUM_COLS - 1;
+    }
+    else
+        screen_x--;
+    // set the deleted to space
+    *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
+    *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = prompt_color;
+    update_cursor(screen_x, screen_y);
+}
+
+/* 
+ * get_curr_terminal: get the current terminal_id
+ * Input: none
+ * Output: none
+ * Return value: the current terminal_id
+ * Side effect: none
+*/
+int32_t get_curr_terminal(){
+    return terminal_id;
+}
+
+/* 
+ * change_curr_terminal: switch to a terminal (via alt + F1/F2/F3)
+ * Input: idx
+ * Output: none
+ * Return value: none
+ * Side effect: change the terminal to the given index
+*/
+void change_curr_terminal(int32_t idx){
+    // check validity
+    cli();
+    if(idx < 0 || idx > 2 || idx == terminal_id) return;
+    // save current screen context to the corresponding struct
+    terminal[terminal_id].t_screen_x = screen_x;
+    terminal[terminal_id].t_screen_y = screen_y;
+    terminal[terminal_id].t_newline_flag = newline_flag;
+    terminal[terminal_id].t_prompt_color = prompt_color;
+    update_video_mapping(terminal_id);
+    memcpy((uint8_t *)t_video_mem[terminal_id], (uint8_t *)video_mem, MEM_SIZE);
+
+    // update to new screen context from the correct struct
+    terminal_id = idx;
+    screen_x = terminal[terminal_id].t_screen_x;
+    screen_y = terminal[terminal_id].t_screen_y;
+    newline_flag = terminal[terminal_id].t_newline_flag;
+    prompt_color = terminal[terminal_id].t_prompt_color;
+    memcpy((uint8_t *)video_mem, (uint8_t *)t_video_mem[terminal_id], MEM_SIZE);
+    int32_t pid_now = get_pid();
+    restore_video_mapping(pid_now); // update the mapping and cursor
+    update_cursor(screen_x, screen_y);
+    sti();
+}
+
+/* 
+ * get_curr_scheduler: get the current scheduler_id
+ * Input: none
+ * Output: none
+ * Return value: the current scheduler_id
+ * Side effect: none
+*/
+int32_t get_curr_scheduler(){
+    return scheduler_id;
+}
+
+/* 
+ * change_curr_scheduler: switch to a scheduler)
+ * Input: idx
+ * Output: none
+ * Return value: none
+ * Side effect: change the scheduler to the given index
+*/
+void change_curr_scheduler(int32_t idx){
+    scheduler_id = idx;
+}
+
+/* 
+ * enable_keyboard: set the keyboard_flag to 1 (so that we can putc to the current terminal)
+ * Input: none
+ * Output: none
+ * Return value: none
+ * Side effect: enable the keyboard in putc
+*/
+void enable_keyboard(){
+    keyboard_flag = 1;
+}
+
+/* 
+ * disable_keyboard: set the keyboard_flag to 0 (so that we can use putc correctly)
+ * Input: none
+ * Output: none
+ * Return value: none
+ * Side effect: disable the keyboard in putc
+*/
+void disable_keyboard(){
+    keyboard_flag = 0;
+}
+
+/* 
+ * up_history: browse back the history of buffer
+ * Input: none
+ * Output: none
+ * Return value: none
+ * Side effect: go back once in the history of buffer
+*/
+void up_history(){
+    // update screen_x and screen_y
+    screen_x += terminal[terminal_id].buf_cnt - terminal[terminal_id].curr_cur;
+    screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+    screen_x %= NUM_COLS;
+    // already the oldest command in history
+    if(terminal[terminal_id].hist_flag == 2) return;
+    if(terminal[terminal_id].oldest_idx == -1 && terminal[terminal_id].curr_idx == MAX_HIS -1) return;
+    // clear keyboard_buffer and the command line in screen
+    int i, bufc;
+    bufc = terminal[terminal_id].buf_cnt;
+    for(i = 0; i < bufc; i++) screen_backspace();
+    memset(terminal[terminal_id].keyboard_buf, 0, BUF_SIZE); // clear the buffer
+    terminal[terminal_id].buf_cnt = 0;
+    // print the command and store it in keyboard buffer
+    for(i = 0; i < BUF_SIZE; i++){
+        int idx = terminal[terminal_id].curr_idx;
+        char c = terminal[terminal_id].history[idx][i];
+        if(c!=0){
+            putc(c);
+            terminal[terminal_id].keyboard_buf[terminal[terminal_id].buf_cnt] = c;
+            terminal[terminal_id].buf_cnt++;
+        }
+    }
+    terminal[terminal_id].curr_cur = terminal[terminal_id].buf_cnt;
+    terminal[terminal_id].curr_idx = (terminal[terminal_id].curr_idx - 1 + MAX_HIS) % MAX_HIS;
+    // set a flag of the position if it leaves the dual position
+    if(terminal[terminal_id].hist_flag == 0) terminal[terminal_id].hist_flag = 1;
+    // set a flag of the position if it is in the right(older) of the dual position
+    if(((terminal[terminal_id].curr_idx + 1) % MAX_HIS) == terminal[terminal_id].oldest_idx) terminal[terminal_id].hist_flag = 2;
+}
+
+/* 
+ * up_history: browse foward the history of buffer
+ * Input: none
+ * Output: none
+ * Return value: none
+ * Side effect: go foward once in the history of buffer
+*/
+void down_history(){
+    // update screen_x and screen_y
+    screen_x += terminal[terminal_id].buf_cnt - terminal[terminal_id].curr_cur;
+    screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+    screen_x %= NUM_COLS;
+    // the current is not in history, nothing to do
+    if(terminal[terminal_id].hist_flag == 0) return;
+    // clear keyboard_buffer and the command line in screen
+    int i, bufc;
+    bufc = terminal[terminal_id].buf_cnt;
+    for(i = 0; i < bufc; i++) screen_backspace();
+    memset(terminal[terminal_id].keyboard_buf, 0, BUF_SIZE); // clear the buffer
+    terminal[terminal_id].buf_cnt = 0;
+    // already the newest command in history, leave it blank
+    if(((terminal[terminal_id].curr_idx + 2) % MAX_HIS) == terminal[terminal_id].newest_idx){
+        terminal[terminal_id].curr_idx = (terminal[terminal_id].curr_idx + 1) % MAX_HIS;
+        // set a flag of the position if it is in the left(newer) of the dual position
+        terminal[terminal_id].hist_flag = 0;
+        terminal[terminal_id].curr_cur = terminal[terminal_id].buf_cnt;
+        return;
+    }
+    // print the command and store it in keyboard buffer
+    for(i = 0; i < BUF_SIZE; i++){
+        char c = terminal[terminal_id].history[(terminal[terminal_id].curr_idx + 2) % MAX_HIS][i];
+        if(c!=0){
+            putc(c);
+            terminal[terminal_id].keyboard_buf[terminal[terminal_id].buf_cnt] = c;
+            terminal[terminal_id].buf_cnt++;
+        }
+    }
+    terminal[terminal_id].curr_cur = terminal[terminal_id].buf_cnt;
+    terminal[terminal_id].curr_idx = (terminal[terminal_id].curr_idx + 1) % MAX_HIS;
+    // set a flag of the position if it leaves the dual position
+    if(terminal[terminal_id].hist_flag == 2) terminal[terminal_id].hist_flag = 1;
+}
+
+/* 
+ * buffer_shift: shift the buffer left / right
+ * Input: none
+ * Output: none
+ * Return value: none
+ * Side effect: go left / right in the buffer
+*/
+void buffer_shift(int step){
+    int bufc;
+    bufc=terminal[terminal_id].buf_cnt;
+    if(bufc==0) return;
+    if((step==-1) && (terminal[terminal_id].curr_cur>0)){
+        terminal[terminal_id].curr_cur--;
+        if(screen_x == 0){
+            // cursor is at the start of the screen, no need to backspace
+            if(screen_y == 0) return;
+            screen_y--;
+            screen_x = NUM_COLS - 1;
+        }
+        else
+            screen_x--;
+        update_cursor(screen_x, screen_y);
+    }
+    else if((step==1) && (terminal[terminal_id].curr_cur<terminal[terminal_id].buf_cnt)) {
+        terminal[terminal_id].curr_cur++;
+        if(screen_x == NUM_COLS-1){
+            // cursor is at the start of the screen, no need to backspace
+            screen_y++;
+            screen_x = 0;
+        }
+        else
+            screen_x++;
+        update_cursor(screen_x, screen_y);
+    }
+
+}
+
+
+void line_shift(int step){
+    int bufc, i, j;
+    bufc=terminal[terminal_id].buf_cnt;
+    if(bufc==0) return;
+    // delete
+    if((step==-1) && (terminal[terminal_id].curr_cur>0)){
+        screen_backspace();
+        // keyboard buffer and screen
+        j = 0;
+        for(i = terminal[terminal_id].curr_cur; i < bufc; i++){
+            char c = terminal[terminal_id].keyboard_buf[i];
+            terminal[terminal_id].keyboard_buf[i - 1] = c;
+            *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x + j) << 1)) = c;
+            *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x + j) << 1) + 1) = prompt_color;
+            j++;
+        }
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x + j) << 1)) = ' ';
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x + j) << 1) + 1) = prompt_color;
+        terminal[terminal_id].keyboard_buf[bufc - 1] = 0;
+        terminal[terminal_id].curr_cur--;
+        terminal[terminal_id].buf_cnt--;
+    }
+    // add
+    else if((step==1) && (terminal[terminal_id].curr_cur<bufc)) {
+        j = bufc - terminal[terminal_id].curr_cur;
+        for(i = bufc-1; i > terminal[terminal_id].curr_cur-1; i--){
+            char c = terminal[terminal_id].keyboard_buf[i];
+            terminal[terminal_id].keyboard_buf[i + 1] = c;
+            *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x + j) << 1)) = c;
+            *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x + j) << 1) + 1) = prompt_color;
+            j--;
+        }
+        terminal[terminal_id].curr_cur++;
+        terminal[terminal_id].buf_cnt++;
+    }
+
+}
+
+void recover_shift(){
+        screen_x += terminal[terminal_id].buf_cnt - terminal[terminal_id].curr_cur;
+        if(screen_x > NUM_COLS-1){
+            // cursor is at the start of the screen, no need to backspace
+            screen_y++;
+            screen_x%=NUM_COLS;
+        }
+}
+
+void print_color(){
+    char* prompt = "Welcome to use the color editor!\nType: color                no arguments to print this prompt\nType: color x x            1st arg - 0 for background color, 1 for font color\n                           2nd arg - 0-F for colors as below\nThe color same as the background color can not be seen!!!\n";
+    puts(prompt);
+    uint8_t restore = prompt_color;
+    uint8_t restore2;
+    char* str00 = "0 - ";
+    puts((int8_t *)str00);
+    prompt_color = prompt_color & 0xF0 ;
+    char* str0 = "black\n";
+    puts((int8_t *)str0);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str11 = "1 - ";
+    puts(str11);
+    prompt_color = restore2;
+    char* str1 = "blue\n";
+    puts((int8_t *)str1);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str22 = "2 - ";
+    puts((int8_t *)str22);
+    prompt_color = restore2;
+    char* str2 = "green\n";
+    puts((int8_t *)str2);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str33 = "3 - ";
+    puts((int8_t *)str33);
+    prompt_color = restore2;
+    char* str3 = "sapphire blue\n";
+    puts((int8_t *)str3);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str44 = "4 - ";
+    puts((int8_t *)str44);
+    prompt_color = restore2;
+    char* str4 = "red\n";
+    puts((int8_t *)str4);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str55 = "5 - ";
+    puts((int8_t *)str55);
+    prompt_color = restore2;
+    char* str5 = "purple\n";
+    puts((int8_t *)str5);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str66 = "6 - ";
+    puts((int8_t *)str66);
+    prompt_color = restore2;
+    char* str6 = "orange\n";
+    puts((int8_t *)str6);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str77 = "7 - ";
+    puts((int8_t *)str77);
+    prompt_color = restore2;
+    char* str7 = "light grey\n";
+    puts((int8_t *)str7);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str88 = "8 - ";
+    puts((int8_t *)str88);
+    prompt_color = restore2;
+    char* str8 = "dark grey\n";
+    puts((int8_t *)str8);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* str99 = "9 - ";
+    puts((int8_t *)str99);
+    prompt_color = restore2;
+    char* str9 = "berry blue\n";
+    puts((int8_t *)str9);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* strAA = "A - ";
+    puts((int8_t *)strAA);
+    prompt_color = restore2;
+    char* strA = "mint green\n";
+    puts((int8_t *)strA);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* strBB = "B - ";
+    puts((int8_t *)strBB);
+    prompt_color = restore2;
+    char* strB = "sky blue\n";
+    puts((int8_t *)strB);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* strCC = "C - ";
+    puts((int8_t *)strCC);
+    prompt_color = restore2;
+    char* strC = "orange red\n";
+    puts((int8_t *)strC);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* strDD = "D - ";
+    puts((int8_t *)strDD);
+    prompt_color = restore2;
+    char* strD = "pink\n";
+    puts((int8_t *)strD);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* strEE = "E - ";
+    puts((int8_t *)strEE);
+    prompt_color = restore2;
+    char* strE = "yellow\n";
+    puts((int8_t *)strE);
+    prompt_color++;
+    restore2 = prompt_color;
+    prompt_color = restore;
+    char* strFF = "F - ";
+    puts((int8_t *)strFF);
+    prompt_color = restore2;
+    char* strF = "white\n";
+    puts((int8_t *)strF);
+    prompt_color = restore;
+}
+
+int32_t setcolor(uint8_t* arg){
+    if(arg == 0) return -1;
+    if(arg[0] == '\0' || arg[1] == '\0') return -1;
+    if(arg[0] < 48 || arg[0] > 49 || arg[1] < 48 || arg[1] > 70) return -1;
+    if(arg[1] < 65 && arg[1] > 57) return -1;
+    uint8_t char1 = (uint8_t)arg[0] - 48;
+    uint8_t char2;
+    if(arg[1] <= 57) char2 = (uint8_t)arg[1] - 48;
+    else char2 = (uint8_t)arg[1] - 55;
+    if(char1 == 0){
+        // background
+        prompt_color = (char2 << 4)|(prompt_color & 0xF);
+        set_fullscreen_color(0);
+    }
+    else if(char1 == 1){
+        // text
+        prompt_color = (char2 & 0xF)|(prompt_color & 0xF0);
+        set_fullscreen_color(1);
+    }
+    else return -1;
+    return 0;
+}
+
+
+void set_fullscreen_color(int32_t indicator){
+    if((indicator!=0) && (indicator!=1)) return;
+    int32_t i;
+    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
+        if(indicator == 0){
+            uint8_t old_color = *(uint8_t *)(video_mem + (i << 1) + 1);
+            *(uint8_t *)(video_mem + (i << 1) + 1) = (prompt_color & 0xF0)|(old_color & 0x0F);
+        }
+        else *(uint8_t *)(video_mem + (i << 1) + 1) = prompt_color;
+    }
+}
+

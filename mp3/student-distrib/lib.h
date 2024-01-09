@@ -6,6 +6,11 @@
 #define _LIB_H
 
 #include "types.h"
+#define CURSOR_PORT 0x3D4
+#define CURSOR_DATA 0x3D5
+#define BUF_SIZE 128  // termial size
+#define MAX_NUM 3    // terminal number
+#define MAX_HIS 20
 
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);
@@ -25,6 +30,55 @@ int8_t* strcpy(int8_t* dest, const int8_t*src);
 int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 
 void test_interrupts(void);
+
+/* keyboard helper function */
+void screen_backspace(void); // clear the last memory address if possible (including the consideration of line changing)
+void scroll_up(void); // helper function to scroll down the screen
+
+
+void enable_cursor(uint8_t start, uint8_t end); // set the cursor
+void disable_cursor(uint8_t start, uint8_t end); // disable the cursor
+void update_cursor(int x, int y); // update the cursor 
+
+
+typedef struct terminal_t{
+    char history[MAX_HIS][BUF_SIZE];
+    int8_t oldest_idx;
+    int8_t newest_idx;
+    int8_t curr_idx;
+    int8_t hist_flag;
+    int32_t curr_cur;
+    int32_t tab_indic;
+    char keyboard_buf[BUF_SIZE];
+    volatile int32_t buf_cnt;
+    int32_t read_flag;
+    int32_t t_screen_x;
+    int32_t t_screen_y;
+    int32_t t_newline_flag;
+    int8_t t_prompt_color;
+} terminal_t;
+
+terminal_t terminal[MAX_NUM];
+
+extern int32_t get_curr_terminal();
+extern void change_curr_terminal(int32_t idx);
+
+extern int32_t get_curr_scheduler();
+extern void change_curr_scheduler(int32_t idx);
+
+extern void enable_keyboard();
+extern void disable_keyboard();
+
+extern void up_history();
+extern void down_history();
+
+extern void buffer_shift(int step);
+extern void line_shift(int step);
+extern void recover_shift();
+
+extern void print_color();
+extern int32_t setcolor(uint8_t* arg);
+extern void set_fullscreen_color(int32_t indicator);
 
 /* Userspace address-check functions */
 int32_t bad_userspace_addr(const void* addr, int32_t len);

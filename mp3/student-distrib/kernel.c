@@ -12,7 +12,11 @@
 #include "keyboard.h"
 #include "rtc.h"
 #include "page.h"
-
+#include "file_system.h"
+#include "PIT.h"
+#include "system_call.h"
+#include "scheduler.h"
+#include "speaker.h"
 #define RUN_TESTS
 
 /* Macros. */
@@ -24,7 +28,7 @@
 void entry(unsigned long magic, unsigned long addr) {
 
     multiboot_info_t *mbi;
-
+    uint32_t file_addr;
     /* Clear the screen. */
     clear();
 
@@ -64,6 +68,7 @@ void entry(unsigned long magic, unsigned long addr) {
                 printf("0x%x ", *((char*)(mod->mod_start+i)));
             }
             printf("\n");
+            file_addr = mod->mod_start;
             mod_count++;
             mod++;
         }
@@ -139,7 +144,7 @@ void entry(unsigned long magic, unsigned long addr) {
         tss.esp0 = 0x800000;
         ltr(KERNEL_TSS);
     }
-
+    
     /* Init IDT */
     idt_init();
     /* Init paging */
@@ -148,24 +153,36 @@ void entry(unsigned long magic, unsigned long addr) {
     i8259_init();
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
+    file_system_init(file_addr);
+    /* Init terminal */
+    terminal_init();
     /* Init keyboard */
     keyboard_init();
     /* Init RTC */
     rtc_init();
+    /* Init PIT */
+    PIT_init();
+    /* Init cursor */
+    enable_cursor(14, 15);
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
+    fd_operations_table_init();
     // printf("Enabling Interrupts\n"); // comment these three lines for testing for interrupt
-    // clear();
-    // sti();
-
+    clear();
+    scheduler_init();
+    
+    sti();
+    play_canon();
+    // int8_t* runshell= "shell";
+    // execute((uint8_t*)runshell);
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
 #endif
     /* Execute the first program ("shell") ... */
-
+    
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
 }

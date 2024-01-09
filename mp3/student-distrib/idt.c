@@ -59,8 +59,10 @@ void idt_init(){
     SET_IDT_ENTRY(idt[MACHINE_CHECK], machine_check_linkage);
     SET_IDT_ENTRY(idt[SIMD_FLOATING_POINT], simd_floating_point_linkage);
     // interrupts
+    interpt_idt_entry(PIT);
     interpt_idt_entry(KEYBOARD);
     interpt_idt_entry(RTC);
+    SET_IDT_ENTRY(idt[PIT], PIT_linkage);
     SET_IDT_ENTRY(idt[KEYBOARD], keyboard_linkage);
     SET_IDT_ENTRY(idt[RTC], rtc_linkage);
     // system call

@@ -4,6 +4,9 @@
 #include "idt_handler.h"
 #include "rtc.h"
 #include "keyboard.h"
+#include "scheduler.h"
+#include "PIT.h"
+#include "signal.h"
 
 #ifndef ASM
 // exceptions
@@ -28,6 +31,7 @@ extern void alignment_check_linkage();
 extern void machine_check_linkage();
 extern void simd_floating_point_linkage();
 // interrupts
+extern void PIT_linkage();
 extern void keyboard_linkage();
 extern void rtc_linkage();
 // system call

@@ -1,6 +1,8 @@
 #ifndef _IDT_HANDLER_H
 #define _IDT_HANDLER_H
 #include "lib.h"
+#include "system_call.h"
+#include "signal.h"
 
 // exceptions handlers
 extern void division_error_handler();
