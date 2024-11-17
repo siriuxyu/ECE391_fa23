@@ -1,14 +1,15 @@
 # ECE391
 
-Hengjia Yu's course project of ECE391-Operating System@FA23 UIUC.
+**Hengjia Yu**'s course project of ECE391-Operating System@FA23 UIUC.
 
-MP1 and MP2 are completed by Hengjia Yu.
+**MP1** and **MP2** are completed by Hengjia Yu.
 
-MP3 is joint effort of group **404ErrorNotFound**: [Hengjia Yu](https://github.com/siriuxyu), [Yuyi Ao](https://github.com/George-ao), [Yanxin Lu](https://github.com/YanxinLu) and [Gaokai Zhang](https://github.com/kelly8tom).\
+**MP3** is joint effort of group **404ErrorNotFound**: [Hengjia Yu](https://github.com/siriuxyu), [Yuyi Ao](https://github.com/George-ao), [Yanxin Lu](https://github.com/YanxinLu) and [Gaokai Zhang](https://github.com/kelly8tom).
+
+# ACADEMIC INTEGRITY
 
 **DISCLAIMER**: You shall not copy any code from this repository as requested by the course policy. This repository contains many unique implementations that differ a lot from the "reference" implementations instructed in lectures. You are almost certainly going to be caught by the plagiarism detector.
 
-# ACADEMIC INTEGRITY
 Please review the University of Illinois Student Code before starting,
 particularly all subsections of Article 1, Part 4 Academic Integrity and Procedure [here](http://studentcode.illinois.edu/article1_part4_1-401.html).
 
